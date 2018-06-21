@@ -93,15 +93,15 @@ public:
 		xoffset *= this->mouse_sensitivity; 
 		yoffset *= this->mouse_sensitivity;
 
-		this->pitchAngle -= yoffset;
-		this->yawAngle += xoffset;
+		this->pitchAngle -= 5 * yoffset;
+		this->yawAngle += 5 * xoffset;
 
 		this->normalizeAngle();
 		this->updateCameraVectors();
 	}
 	void handleMouseHoldMove(GLfloat xoffset, GLfloat yoffset) {
-		xoffset *= this->mouse_sensitivity;
-		yoffset *= this->mouse_sensitivity;
+		xoffset *= 3 * this->mouse_sensitivity;
+		yoffset *= 3 * this->mouse_sensitivity;
 
 		this->pitchAngle -= yoffset;
 		this->yawAngle += xoffset;
