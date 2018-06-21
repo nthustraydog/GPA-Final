@@ -195,7 +195,19 @@ void My_Timer(int val)
 
 void My_Mouse(int button, int state, int x, int y)
 {
-	if (button == 3 || button == 4)
+	if (state == GLUT_DOWN)
+	{
+		printf("Mouse %d is pressed at (%d, %d)\n", button, x, y);
+		//Record the Scrolling of Mouse to Move the Scene
+		pressed_X = (float)x;
+		pressed_Y = (float)y;
+	}
+	else if (state == GLUT_UP)
+	{
+		printf("Mouse %d is released at (%d, %d)\n", button, x, y);
+	}
+	
+	/*if (button == 3 || button == 4)
 	{
 		if (state == GLUT_UP) {
 			printf("Scroll (pressed) %s At (%d, %d)\n", (button == 3)? "Up" : "Down", x, y);
@@ -220,10 +232,27 @@ void My_Mouse(int button, int state, int x, int y)
 			MouseLeftPressed = false;
 			printf("Left Mouse Button is released at (%d, %d)\n", x, y);
 		}
-	}
+	}*/
 }
 
-void My_Move(int x, int y) {
+//The Function that controls with the Mouse
+//First Introduced in "Computer Graphics" Color Model HW1
+//The Motion Function is Registered Below
+void onMouseMotion(int x, int y) {
+	GLfloat xoffset = x - pressed_X;
+	GLfloat yoffset = y - pressed_Y;
+	pressed_X = x;
+	pressed_Y = y;
+
+
+	/*Camera_Setting();
+	MV = lookAt(Position_View, Position_View + Front_View, Up_View);*/
+
+	camera.handleMouseMove(xoffset, -yoffset);
+}
+
+
+/*void My_Move(int x, int y) {
 	printf("Mouse moving... starting at (%d, %d)\n", x, y);
 	if (firstMouseMove)
 	{
@@ -239,7 +268,7 @@ void My_Move(int x, int y) {
 	lastY = y;
 
 	camera.handleMouseMove(xoffset, yoffset);
-}
+}*/
 
 void My_Keyboard(unsigned char key, int x, int y)
 {
@@ -272,6 +301,10 @@ void My_Keyboard(unsigned char key, int x, int y)
 		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
 	}
 }
+
+
+/*TRY: FIX THE MOUSE HOVERING ISSUE*/
+
 
 void My_SpecialKeys(int key, int x, int y)
 {
@@ -361,8 +394,11 @@ int main(int argc, char *argv[])
 	glutReshapeFunc(My_Reshape);
 
 	glutMouseFunc(My_Mouse);
-	glutMotionFunc(My_Move);
-	glutPassiveMotionFunc(My_Move);
+	//glutMotionFunc(My_Move);
+	//glutPassiveMotionFunc(My_Move);
+
+	//Dedcated To "Computer Graphics" on Moving Mouse Hover
+	glutMotionFunc(onMouseMotion);
 
 	glutKeyboardFunc(My_Keyboard);
 	glutSpecialFunc(My_SpecialKeys);
