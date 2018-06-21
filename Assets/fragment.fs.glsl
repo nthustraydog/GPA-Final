@@ -22,9 +22,9 @@ uniform float specular_power = 200.0;
 
 uniform vec3 Ia = vec3(0.1, 0.1, 0.1);
 uniform vec3 Id = vec3(0.7, 0.7, 0.7);
-uniform vec3 Is = vec3(1, 1, 1);
+uniform vec3 Is = vec3(0.5, 0.5, 0.5);
 uniform vec3 Ks = vec3(1, 1, 1);
-uniform int shinness = 100;
+uniform int shinness = 10;
 
 void main()
 {
@@ -42,6 +42,6 @@ void main()
 	vec3 texColor = texture(tex, vertexData.texcoord).rgb;
 	vec3 ambient = texColor * Ia;
 	vec3 diffuse = texColor * Id * max(dot(N, L), 0.0);
-	vec3 specular = Ks * Is * pow(max(dot(N, H), 0.0), 100);
+	vec3 specular = Ks * Is * pow(max(dot(N, H), 0.0), shinness);
 	fragColor = vec4(ambient + diffuse + specular, 1.0);
 }

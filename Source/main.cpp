@@ -6,6 +6,9 @@
 #include "../VC14/Model.h"
 #include "../VC14/Texture.h"
 #include "../VC14/Camera.h"
+#include "../VC14/Skybox.h"
+
+#include <vector>
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
@@ -37,6 +40,8 @@ GLfloat deltaTime = 16.0f;
 bool MouseLeftPressed = false;
 bool firstMouseMove = true;
 Camera camera(glm::vec3(0.0f, 1.0f, 3.0f));
+
+Skybox* skybox;
 
 char** loadShaderSource(const char* file)
 {
@@ -124,6 +129,7 @@ void My_Init()
 {
     glClearColor(0.0f, 0.6f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glDepthFunc(GL_LEQUAL);
 
 	program = glCreateProgram();
@@ -156,6 +162,13 @@ void My_Init()
 	glUseProgram(program);
 
 	LoadModel(objFilePath);
+
+	skybox = new Skybox(std::vector<std::string>{"right.jpg",
+		"left.jpg",
+		"top.jpg",
+		"bottom.jpg",
+		"back.jpg",
+		"front.jpg"}, camera.position, view, projection);
 }
 
 void My_Display()
@@ -172,6 +185,8 @@ void My_Display()
 
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+
+	skybox->draw();
 
 	objModel.Draw(program);
 
@@ -406,6 +421,8 @@ int main(int argc, char *argv[])
 
 	// Enter main event loop.
 	glutMainLoop();
+
+	delete skybox;
 
 	return 0;
 }

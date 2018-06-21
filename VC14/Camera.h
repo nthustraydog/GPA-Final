@@ -37,9 +37,9 @@ public:
 	}
 public:
 	void Reset() {
-		this->position = vec3(0.0, 0.0, 2.0);
-		this->viewUp = vec3(0.0, 1.0, 0.0);
-		this->forward = vec3(0.0, 0.0, -1.0);
+		this->position = glm::vec3(0.0, 0.0, 2.0);
+		this->viewUp = glm::vec3(0.0, 1.0, 0.0);
+		this->forward = glm::vec3(0.0, 0.0, -1.0);
 		this->moveSpeed = SPEED;
 		this->mouse_zoom = MOUSE_ZOOM;
 		this->mouse_sensitivity = MOUSE_SENSITIVTY;
@@ -54,7 +54,7 @@ public:
 	void handleKeyPress(Camera_Movement direction, GLfloat deltaTime)
 	{
 		GLfloat velocity = this->moveSpeed * deltaTime;
-		vec3 UpDown;
+		glm::vec3 UpDown;
 		switch (direction)
 		{
 		case FORWARD:
@@ -70,12 +70,12 @@ public:
 			this->position += this->side * velocity;
 			break;
 		case UP:
-			UpDown = vec3(0, 1, 0);
+			UpDown = glm::vec3(0, 1, 0);
 			printf("Camera Side: (%f, %f, %f)\n", UpDown.x, UpDown.y, UpDown.z);
 			this->position += UpDown * velocity;
 			break;
 		case DOWN:
-			UpDown = vec3(0, -1, 0);
+			UpDown = glm::vec3(0, -1, 0);
 			printf("Camera Side: (%f, %f, %f)\n", UpDown.x, UpDown.y, UpDown.z);
 			this->position += UpDown * velocity;
 			break;
