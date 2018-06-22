@@ -20,11 +20,11 @@ uniform vec3 diffuse_albedo = vec3(0.5, 0.2, 0.7);
 uniform vec3 specular_albedo = vec3(0.7);          
 uniform float specular_power = 200.0;     
 
-uniform vec3 Ia = vec3(0.1, 0.1, 0.1);
-uniform vec3 Id = vec3(0.7, 0.7, 0.7);
-uniform vec3 Is = vec3(0.5, 0.5, 0.5);
-uniform vec3 Ks = vec3(1, 1, 1);
-uniform int shinness = 10;
+uniform vec3 Ia = vec3(0.15, 0.15, 0.15);
+uniform vec3 Id = vec3(1.0, 1.0, 1.0);
+uniform vec3 Is = vec3(1.0, 1.0, 1.0);
+uniform vec3 Ks = vec3(0.2, 0.2, 0.2);
+uniform int shinness = 8;
 
 void main()
 {
