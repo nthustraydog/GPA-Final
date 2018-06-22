@@ -90,10 +90,9 @@ Skybox::Skybox(const std::vector<std::string>& skyboxPaths, glm::vec3& eyePos, g
 Skybox::~Skybox()
 {
 }
-#include <iostream>
+
 void Skybox::draw()
 {
-	std::cout << projection[0][0] << ' ' << projection[0][1] << ' ' << projection[0][2] << std::endl;
 	glBindVertexArray(vao);
 	glUseProgram(program);
 
