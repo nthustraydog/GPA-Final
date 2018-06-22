@@ -28,6 +28,6 @@ void main()
 
 	vertexData.N = mat3(um4mv) * iv3normal;
 	vertexData.V = -P.xyz; 
-	vertexData.L = vec3(0, 1, 1);
+	vertexData.L = (um4mv * vec4(0, 1, -1, 0)).xyz;
 	vertexData.H = vec3(1, 1, 1);
 }

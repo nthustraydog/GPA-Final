@@ -27,10 +27,10 @@ class Mesh {
 public:
 	Mesh() : vao(0), vbo(0), ebo(0){}
 
-	Mesh(const vector<Vertex> &vertexData, const vector<Texture> &textures, const vector<GLuint> &indices) : vao(0), vbo(0), ebo(0) {
+	Mesh(vector<Vertex> &vertexData, const vector<Texture> &textures, const vector<GLuint> &indices) : vao(0), vbo(0), ebo(0) {
 		setData(vertexData, textures, indices);
 	}
-	void setData(const std::vector<Vertex>& vertData,
+	void setData(std::vector<Vertex>& vertData,
 		const std::vector<Texture> & textures,
 		const std::vector<GLuint>& indices)
 	{
@@ -42,13 +42,27 @@ public:
 			this->SetUpMesh();
 		}
 	}
+
+	void Move(int offsetX, int offsetY, int offsetZ)
+	{
+		if (!this->vertexData.empty() && !this->indices.empty())
+		{
+			for (int i = 0;i < this->vertexData.size(); i++) {
+				this->vertexData[i].position.x += offsetX;
+				this->vertexData[i].position.y += offsetY;
+				this->vertexData[i].position.z += offsetZ;
+			}
+		}
+		this->updateMesh();
+	}
+
 	void Draw(GLuint program) const
 	{
 		if (vao == 0 || vbo == 0 || ebo == 0)
 			return;
 
-		glUseProgram(program);
 		glBindVertexArray(vao);
+		glUseProgram(program);
 
 		int diffuseCnt = 0, specularCnt = 0, textUnitCnt = 0;
 
@@ -119,7 +133,27 @@ private:
 		
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
+	}
 
+	void updateMesh() {
+		glBindVertexArray(vao);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertexData.size(), &vertexData[0], GL_STATIC_DRAW);
+
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
+		glEnableVertexAttribArray(0);
+
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+		glEnableVertexAttribArray(1);
+
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(5 * sizeof(GL_FLOAT)));
+		glEnableVertexAttribArray(2);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * indices.size(), &indices[0], GL_STATIC_DRAW);
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
 	}
 
 };

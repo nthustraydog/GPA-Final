@@ -31,12 +31,14 @@ GLint um4mv;
 GLint color;
 
 Model objModel;
+Model objMainModel;
 GLuint program;
 
 const int WINDOW_WIDTH = 600, WINDOW_HEIGHT = 600;
 GLfloat lastX = WINDOW_WIDTH / 2.0f, lastY = WINDOW_HEIGHT / 2.0f;
 GLfloat pressed_X = WINDOW_WIDTH / 2.0f, pressed_Y = WINDOW_HEIGHT / 2.0f; // record press coordinate
 GLfloat deltaTime = 16.0f;
+GLfloat rotateAngle = -90.0f;
 bool MouseLeftPressed = false;
 bool firstMouseMove = true;
 Camera camera(glm::vec3(0.0f, 1.0f, 3.0f));
@@ -116,7 +118,12 @@ void freeShaderSource(char** srcp)
 
     return texture;
 }*/
-
+void LoadModel_custom(const string &objFilePath, Model *model) {
+	if (!model->loadModel(objFilePath)) {
+		printf("Fail to load model\n");
+		return;
+	}
+}
 void LoadModel(const string &objFilePath) 
 {
 	if (!objModel.loadModel(objFilePath)) {
@@ -138,7 +145,8 @@ void My_Init()
 
 	char** vertexShaderSource = loadShaderSource("vertex.vs.glsl");
 	char** fragmentShaderSource = loadShaderSource("fragment.fs.glsl");
-	string objFilePath = "./Arabic+City.obj";
+	string objMainPath = "./Arabic+City.obj";
+	string objFilePath = "./humvee.obj";
 
 	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
 	glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
@@ -161,7 +169,10 @@ void My_Init()
 
 	glUseProgram(program);
 
-	LoadModel(objFilePath);
+	LoadModel_custom(objFilePath, &objModel);
+	LoadModel_custom(objMainPath, &objMainModel);
+	//LoadModel(objFilePath);
+	//LoadModel(objMain);
 
 	skybox = new Skybox(std::vector<std::string>{"right.jpg",
 		"left.jpg",
@@ -173,22 +184,27 @@ void My_Init()
 
 void My_Display()
 {
+	mat4 r = rotate(mat4(), radians(rotateAngle), vec3(1.0, 0.0, 0.0));
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	model = mat4();
-
-	glUseProgram(program);
 
 	projection = glm::perspective(camera.mouse_zoom,
 		(GLfloat)(WINDOW_WIDTH) / WINDOW_HEIGHT, 1.0f, 10000.0f);
 	view = camera.getViewMatrix(); 
 
-	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
+	glUseProgram(program);
+	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model * r));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
 
 	skybox->draw();
-
 	objModel.Draw(program);
+
+	glUseProgram(program);
+	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
+	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+	objMainModel.Draw(program);
 
     glutSwapBuffers();
 }
@@ -313,6 +329,10 @@ void My_Keyboard(unsigned char key, int x, int y)
 	}
 	else if (key == 'r') {
 		camera.handleKeyPress(RESET, deltaTime);
+		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
+	}
+	else if (key == 'v') {
+		objModel.Move(100, 0, 0);
 		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
 	}
 }

@@ -18,6 +18,13 @@ public:
 			it->Draw(program);
 		}
 	}
+	void Move(int offsetX, int offsetY, int offsetZ)
+	{
+		for (std::vector<Mesh>::iterator it = this->meshes.begin(); this->meshes.end() != it; ++it)
+		{
+			it->Move(offsetX, offsetY, offsetZ);
+		}
+	}
 	bool loadModel(const std::string& filePath)
 	{
 		Assimp::Importer importer;
