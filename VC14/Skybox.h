@@ -11,7 +11,7 @@
 class Skybox
 {
 public:
-	Skybox(const std::vector<std::string>& skyboxPaths, glm::vec3& eyePos, glm::mat4& viewing, glm::mat4& projection);
+	Skybox(const std::vector<std::string>& skyboxPaths, const glm::vec3& eyePos, const glm::mat4& viewing, const glm::mat4& projection);
 	~Skybox();
 
 	void draw();
@@ -20,8 +20,8 @@ protected:
 	GLuint vao;
 	GLuint texture;
 
-	glm::mat4 &viewing, &projection;
-	glm::vec3& eyePos;
+	const glm::mat4 &viewing, &projection;
+	const glm::vec3& eyePos;
 
 	static GLuint program;
 	static float vertices[12];

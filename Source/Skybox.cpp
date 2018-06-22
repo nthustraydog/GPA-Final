@@ -15,7 +15,7 @@ float Skybox::vertices[12] = { -1.0f, 1.0f, 1.0f,
 unsigned int Skybox::indices[6] = { 0, 1, 2,
 2, 1, 3 };
 
-Skybox::Skybox(const std::vector<std::string>& skyboxPaths, glm::vec3& eyePos, glm::mat4& viewing, glm::mat4& projection) :
+Skybox::Skybox(const std::vector<std::string>& skyboxPaths, const glm::vec3& eyePos, const glm::mat4& viewing, const glm::mat4& projection) :
 	viewing(viewing), projection(projection), eyePos(eyePos), vao(0), texture(0)
 {
 	// Load Program

@@ -5,7 +5,7 @@
 
 #include "../VC14/Model.h"
 #include "../VC14/Texture.h"
-#include "../VC14/Camera.h"
+#include "../VC14/OrbitCamera.h"
 #include "../VC14/Skybox.h"
 
 #include <vector>
@@ -33,13 +33,13 @@ GLint color;
 Model objModel;
 GLuint program;
 
-const int WINDOW_WIDTH = 600, WINDOW_HEIGHT = 600;
+const int WINDOW_WIDTH = 1066, WINDOW_HEIGHT = 600;
 GLfloat lastX = WINDOW_WIDTH / 2.0f, lastY = WINDOW_HEIGHT / 2.0f;
 GLfloat pressed_X = WINDOW_WIDTH / 2.0f, pressed_Y = WINDOW_HEIGHT / 2.0f; // record press coordinate
 GLfloat deltaTime = 16.0f;
 bool MouseLeftPressed = false;
 bool firstMouseMove = true;
-Camera camera(glm::vec3(0.0f, 1.0f, 3.0f));
+OrbitCamera camera;
 
 Skybox* skybox;
 
@@ -168,7 +168,8 @@ void My_Init()
 		"top.jpg",
 		"bottom.jpg",
 		"back.jpg",
-		"front.jpg"}, camera.position, view, projection);
+		"front.jpg"}, 
+		camera.getPosition(), camera.getViewingMatrix(), camera.getPerspectiveMatrix());
 }
 
 void My_Display()
@@ -179,9 +180,9 @@ void My_Display()
 
 	glUseProgram(program);
 
-	projection = glm::perspective(camera.mouse_zoom,
-		(GLfloat)(WINDOW_WIDTH) / WINDOW_HEIGHT, 1.0f, 10000.0f);
-	view = camera.getViewMatrix(); 
+	camera.update(timer_speed / 1000.0f);
+	projection = camera.getPerspectiveMatrix();
+	view = camera.getViewingMatrix(); 
 
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
@@ -200,6 +201,8 @@ void My_Reshape(int width, int height)
 	float viewportAspect = (float)width / (float)height;
 	projection = perspective(radians(60.0f), viewportAspect, 0.1f, 1000.0f);
 	view = lookAt(vec3(perspect_rad, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+
+	camera.setAspect(viewportAspect);
 }
 
 void My_Timer(int val)
@@ -248,6 +251,8 @@ void My_Mouse(int button, int state, int x, int y)
 			printf("Left Mouse Button is released at (%d, %d)\n", x, y);
 		}
 	}*/
+
+	camera.onMouse(button, state, x, y);
 }
 
 //The Function that controls with the Mouse
@@ -263,7 +268,7 @@ void onMouseMotion(int x, int y) {
 	/*Camera_Setting();
 	MV = lookAt(Position_View, Position_View + Front_View, Up_View);*/
 
-	camera.handleMouseMove(xoffset, -yoffset);
+	camera.onMotion(x, y);
 }
 
 
@@ -287,34 +292,12 @@ void onMouseMotion(int x, int y) {
 
 void My_Keyboard(unsigned char key, int x, int y)
 {
-	if (key == 'w') {
-		camera.handleKeyPress(FORWARD, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 's') {
-		camera.handleKeyPress(BACKWARD, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'a') {
-		camera.handleKeyPress(LEFT, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'd') {
-		camera.handleKeyPress(RIGHT, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'z') {
-		camera.handleKeyPress(UP, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'x') {
-		camera.handleKeyPress(DOWN, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'r') {
-		camera.handleKeyPress(RESET, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
+	camera.onKeyboard(key, x, y);
+}
+
+void My_Keyboard_Up(unsigned char key, int x, int y)
+{
+	camera.onKeyboardUp(key, x, y);
 }
 
 
@@ -381,7 +364,7 @@ int main(int argc, char *argv[])
     glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 #endif
 	glutInitWindowPosition(100, 100);
-	glutInitWindowSize(600, 600);
+	glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 	glutCreateWindow("AS2_Framework"); // You cannot use OpenGL functions before this line; The OpenGL context must be created first by glutCreateWindow()!
 #ifdef _MSC_VER
 	glewInit();
@@ -416,6 +399,7 @@ int main(int argc, char *argv[])
 	glutMotionFunc(onMouseMotion);
 
 	glutKeyboardFunc(My_Keyboard);
+	glutKeyboardUpFunc(My_Keyboard_Up);
 	glutSpecialFunc(My_SpecialKeys);
 	glutTimerFunc(timer_speed, My_Timer, 0); 
 
