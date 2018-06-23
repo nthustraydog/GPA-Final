@@ -34,6 +34,7 @@ public:
 			aiProcess_ImproveCacheLocality |
 			aiProcess_SplitLargeMeshes |
 			aiProcess_Triangulate |
+			aiProcess_CalcTangentSpace |
 			aiProcess_JoinIdenticalVertices |
 			aiProcess_SortByPType
 		);
@@ -127,6 +128,12 @@ private:
 				vertex.normal.x = meshPtr->mNormals[i].x;
 				vertex.normal.y = meshPtr->mNormals[i].y;
 				vertex.normal.z = meshPtr->mNormals[i].z;
+			}
+			if (meshPtr->HasTangentsAndBitangents())
+			{
+				vertex.tangent.x = meshPtr->mTangents[i].x;
+				vertex.tangent.y = meshPtr->mTangents[i].y;
+				vertex.tangent.z = meshPtr->mTangents[i].z;
 			}
 			vertData.push_back(vertex);
 		}

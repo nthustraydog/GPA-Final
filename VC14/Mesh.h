@@ -15,6 +15,7 @@ typedef struct Vertex{
 	vec3 position;
 	vec2 texCoords;
 	vec3 normal;
+	vec3 tangent;
 }Vertex;
 
 typedef struct Texture {
@@ -113,6 +114,10 @@ private:
 
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(5 * sizeof(GL_FLOAT)));
 		glEnableVertexAttribArray(2);
+
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(8 * sizeof(GL_FLOAT)));
+		glEnableVertexAttribArray(3);
+
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * indices.size(), &indices[0], GL_STATIC_DRAW);
