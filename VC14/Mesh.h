@@ -15,7 +15,6 @@ typedef struct Vertex{
 	vec3 position;
 	vec2 texCoords;
 	vec3 normal;
-	vec3 tangent;
 }Vertex;
 
 typedef struct Texture {
@@ -38,19 +37,10 @@ public:
 		this->vertexData = vertData;
 		this->indices = indices;
 		this->textures = textures;
-
 		if (!vertData.empty() && !indices.empty())
 		{
 			this->SetUpMesh();
 		}
-	}
-	void Move(float offsetX, float offsetY, float offsetZ) {
-		for (int i = 0; i < vertexData.size(); i++) {
-			vertexData[i].position.x += offsetX;
-			vertexData[i].position.y += offsetY;
-			vertexData[i].position.z += offsetZ;
-		}
-		this->UpdateMesh();
 	}
 	void Draw(GLuint program) const
 	{
@@ -67,21 +57,21 @@ public:
 			switch (it->type)
 			{
 			case aiTextureType_DIFFUSE:
-				glActiveTexture(GL_TEXTURE0);
+				glActiveTexture(GL_TEXTURE0 + textUnitCnt);
 				glBindTexture(GL_TEXTURE_2D, it->id);
 
 				samplerNameStr << "texture_diffuse" << diffuseCnt++;
 				glUniform1i(glGetUniformLocation(program,
-					samplerNameStr.str().c_str()), 0);
+					samplerNameStr.str().c_str()), textUnitCnt++);
 
 				break;
 			case aiTextureType_SPECULAR:
-				glActiveTexture(GL_TEXTURE1);
+				glActiveTexture(GL_TEXTURE0 + textUnitCnt);
 				glBindTexture(GL_TEXTURE_2D, it->id);
 
-				samplerNameStr << "texture_normal" << specularCnt++;
+				samplerNameStr << "texture_specular" << specularCnt++;
 				glUniform1i(glGetUniformLocation(program,
-					samplerNameStr.str().c_str()), 1);
+					samplerNameStr.str().c_str()), textUnitCnt++);
 				
 				break;
 			default:
@@ -124,36 +114,12 @@ private:
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(5 * sizeof(GL_FLOAT)));
 		glEnableVertexAttribArray(2);
 
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(8 * sizeof(GL_FLOAT)));
-		glEnableVertexAttribArray(3);
-
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * indices.size(), &indices[0], GL_STATIC_DRAW);
 		
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 
-	}
-
-	void UpdateMesh() {
-		glBindVertexArray(vao);
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertexData.size(), &vertexData[0], GL_STATIC_DRAW);
-
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)0);
-		glEnableVertexAttribArray(0);
-
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(3 * sizeof(GL_FLOAT)));
-		glEnableVertexAttribArray(1);
-
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(5 * sizeof(GL_FLOAT)));
-		glEnableVertexAttribArray(2);
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * indices.size(), &indices[0], GL_STATIC_DRAW);
-
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindVertexArray(0);
 	}
 
 };

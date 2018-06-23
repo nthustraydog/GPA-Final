@@ -12,16 +12,16 @@ in VertexData
 	vec3 V;
     vec3 H; // eye space halfway vector
     vec2 texcoord;
-
-	vec3 FragPos;
-    vec3 TangentFragPos;
+	vec4 fragPosLightSpace;
 } vertexData;
 
 uniform sampler2D tex;
-uniform sampler2D texture_diffuse0;
-uniform sampler2D texture_normal0;
 
-uniform vec3 Ia = vec3(0.15, 0.15, 0.15);
+uniform vec3 diffuse_albedo = vec3(0.5, 0.2, 0.7); 
+uniform vec3 specular_albedo = vec3(0.7);          
+uniform float specular_power = 200.0;     
+
+uniform vec3 Ia = vec3(0.2, 0.2, 0.2);
 uniform vec3 Id = vec3(1.0, 1.0, 1.0);
 uniform vec3 Is = vec3(1.0, 1.0, 1.0);
 uniform vec3 Ks = vec3(0.2, 0.2, 0.2);
@@ -34,26 +34,30 @@ float fogFactor = 0;
 float fog_start = 1;
 float fog_end = 500;
 
+uniform sampler2D depthMap;
+float ShadowCalculation(vec4 fragPosLightSpace);
+
 void main()
 {
-	vec3 N = texture(texture_normal0, vertexData.texcoord).rgb;
+    /*vec3 texColor = texture(tex,vertexData.texcoord).rgb;
+    fragColor = vec4(texColor, 1.0);*/
+	//Debug Only for U,V
+    //fragColor = vec4(vertexData.texcoord, 0.0, 1.0);
 
-	N = normalize(N * 2.0 - 1.0);
 
-	vec3 L = normalize(vertexData.L - vertexData.TangentFragPos);
-	vec3 V = normalize(vertexData.V - vertexData.TangentFragPos);
-	vec3 reflectDir = reflect(-L, N);
-	vec3 H = normalize(L + V);  
+	vec3 N = normalize(vertexData.N); 
+	vec3 L = normalize(vertexData.L); 
+	vec3 V = normalize(vertexData.V); 
+	vec3 H = normalize(L + V);   
 	
-	vec3 texColor = texture(texture_diffuse0, vertexData.texcoord).rgb;
+	vec3 texColor = texture(tex, vertexData.texcoord).rgb;
 	vec3 ambient = texColor * Ia;
 	vec3 diffuse = texColor * Id * max(dot(N, L), 0.0);
 	vec3 specular = Ks * Is * pow(max(dot(N, H), 0.0), shinness);
 
-	vec4 lightingColor = vec4(ambient + diffuse + specular, 1.0);
+	float shadow = ShadowCalculation(vertexData.fragPosLightSpace);
+	vec4 lightingColor = vec4(ambient + (1.0 - shadow) * (diffuse + specular), 1.0);
 
-
-	//fragColor = vec4(ambient + diffuse + specular, 1.0);
 	if(fogEffect_switch == 1)
 	{
 		//Turn Fog Effect On (Recommended)
@@ -66,5 +70,17 @@ void main()
 	{
 		//Turn Fog Effect Off (Use At Your OWN RISK)
 		fragColor = lightingColor;
+	}
 }
+
+float ShadowCalculation(vec4 fragPosLightSpace)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float closestDepth = texture(depthMap, projCoords.xy).r; 
+    float currentDepth = projCoords.z;
+	float bias = 0.0025;
+    float shadow = currentDepth -bias > closestDepth  ? 1.0 : 0.0;
+
+    return shadow;
 }
