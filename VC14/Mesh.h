@@ -72,7 +72,7 @@ public:
 
 				samplerNameStr << "texture_diffuse" << diffuseCnt++;
 				glUniform1i(glGetUniformLocation(program,
-					samplerNameStr.str().c_str()), textUnitCnt++);
+					samplerNameStr.str().c_str()), 0);
 
 				break;
 			case aiTextureType_SPECULAR:
@@ -81,7 +81,7 @@ public:
 
 				samplerNameStr << "texture_normal" << specularCnt++;
 				glUniform1i(glGetUniformLocation(program,
-					samplerNameStr.str().c_str()), textUnitCnt++);
+					samplerNameStr.str().c_str()), 1);
 				
 				break;
 			default:

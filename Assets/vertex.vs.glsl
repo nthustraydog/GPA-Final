@@ -20,6 +20,7 @@ out VertexData
 	vec3 FragPos;
     vec3 TangentFragPos;
 } vertexData;
+out vec4 viewSpace_coord;
 
 void main()
 {
@@ -40,4 +41,5 @@ void main()
 	vertexData.L = TBN * (um4mv * vec4(0, 1, -1, 0)).xyz;
     vertexData.V  = TBN * (-P.xyz);
     vertexData.TangentFragPos  = TBN * vertexData.FragPos;
+	viewSpace_coord = um4mv * vec4(iv3vertex, 1.0);
 }
