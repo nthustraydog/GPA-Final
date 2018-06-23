@@ -27,10 +27,10 @@ class Mesh {
 public:
 	Mesh() : vao(0), vbo(0), ebo(0){}
 
-	Mesh(vector<Vertex> &vertexData, const vector<Texture> &textures, const vector<GLuint> &indices) : vao(0), vbo(0), ebo(0) {
+	Mesh(const vector<Vertex> &vertexData, const vector<Texture> &textures, const vector<GLuint> &indices) : vao(0), vbo(0), ebo(0) {
 		setData(vertexData, textures, indices);
 	}
-	void setData(std::vector<Vertex>& vertData,
+	void setData(const std::vector<Vertex>& vertData,
 		const std::vector<Texture> & textures,
 		const std::vector<GLuint>& indices)
 	{
@@ -42,29 +42,34 @@ public:
 			this->SetUpMesh();
 		}
 	}
-
-	void Move(int offsetX, int offsetY, int offsetZ)
-	{
-		if (!this->vertexData.empty() && !this->indices.empty())
-		{
-			for (int i = 0;i < this->vertexData.size(); i++) {
-				this->vertexData[i].position.x += offsetX;
-				this->vertexData[i].position.y += offsetY;
-				this->vertexData[i].position.z += offsetZ;
-			}
+	void Move(float offsetX, float offsetY, float offsetZ) {
+		for (int i = 0; i < vertexData.size(); i++) {
+			vertexData[i].position.x += offsetX;
+			vertexData[i].position.y += offsetY;
+			vertexData[i].position.z += offsetZ;
 		}
-		this->updateMesh();
+		this->UpdateMesh();
 	}
-
-	void Draw(GLuint program) const
+	void ShadowDraw() const
 	{
 		if (vao == 0 || vbo == 0 || ebo == 0)
 			return;
 
 		glBindVertexArray(vao);
-		glUseProgram(program);
+		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
-		int diffuseCnt = 0, specularCnt = 0, textUnitCnt = 0;
+		glBindVertexArray(0);
+		glUseProgram(0);
+	}
+	void Draw(GLuint program) const
+	{
+		if (vao == 0 || vbo == 0 || ebo == 0)
+			return;
+
+		glUseProgram(program);
+		glBindVertexArray(vao);
+
+		int diffuseCnt = 0, specularCnt = 0, textUnitCnt = 1;
 
 		for (vector<Texture>::const_iterator it = textures.begin(); it != textures.end(); it++) {
 			stringstream samplerNameStr;
@@ -133,9 +138,10 @@ private:
 		
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
+
 	}
 
-	void updateMesh() {
+	void UpdateMesh() {
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertexData.size(), &vertexData[0], GL_STATIC_DRAW);

@@ -7,12 +7,12 @@
 #include "../VC14/Texture.h"
 #include "../VC14/Camera.h"
 #include "../VC14/Skybox.h"
-
 #include <vector>
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
 #define MENU_EXIT 3
+#define SHADOW_MAP_SIZE 4096
 
 GLubyte timer_cnt = 0;
 bool timer_enabled = true;
@@ -26,6 +26,11 @@ mat4 view;
 mat4 projection;
 mat4 model;
 
+GLuint shadow_tex;
+GLint light_mvp;
+GLint shadow_matrix;
+GLint light_matrix;
+
 GLint um4p;
 GLint um4mv;
 GLint color;
@@ -33,6 +38,7 @@ GLint color;
 Model objModel;
 Model objMainModel;
 GLuint program;
+GLuint depthProg;
 
 const int WINDOW_WIDTH = 600, WINDOW_HEIGHT = 600;
 GLfloat lastX = WINDOW_WIDTH / 2.0f, lastY = WINDOW_HEIGHT / 2.0f;
@@ -42,8 +48,40 @@ GLfloat rotateAngle = -90.0f;
 bool MouseLeftPressed = false;
 bool firstMouseMove = true;
 Camera camera(glm::vec3(0.0f, 1.0f, 3.0f));
-
 Skybox* skybox;
+
+struct
+{
+	GLuint fbo;
+	GLuint depthMap;
+} shadowBuffer;
+
+const char *depth_vs[] =
+{
+	"#version 410 core                         \n"
+	"                                          \n"
+	"uniform mat4 mvp;                         \n"
+	"                                          \n"
+	"layout (location = 0) in vec3 iv3vertex;   \n"
+	"                                          \n"
+	"void main(void)                           \n"
+	"{                                         \n"
+	"    gl_Position = mvp * vec4(iv3vertex, 1.0);         \n"
+	"}                                         \n"
+};
+
+const char *depth_fs[] =
+{
+	"#version 410 core                                \n"
+	"                                                 \n"
+	"out vec4 fragColor;                              \n"
+	"                                                 \n"
+	"void main()                                      \n"
+	"{                                                \n"
+	"    fragColor = vec4(vec3(gl_FragCoord.z), 1.0); \n"
+	"}                                                \n"
+};
+
 
 char** loadShaderSource(const char* file)
 {
@@ -64,6 +102,7 @@ void freeShaderSource(char** srcp)
     delete[] srcp[0];
     delete[] srcp;
 }
+
 
 // define a simple data structure for storing texture image raw data
 /*typedef struct _TextureData
@@ -134,20 +173,41 @@ void LoadModel(const string &objFilePath)
 
 void My_Init()
 {
+	string objMainPath = "./Arabic+City.obj";
+	string objFilePath = "./humvee.obj";
+
     glClearColor(0.0f, 0.6f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glDepthFunc(GL_LEQUAL);
 
-	program = glCreateProgram();
+	// ----- Begin Initialize Depth Shader Program -----
+	GLuint shadow_vs;
+	GLuint shadow_fs;
+	// shadow vertex shader
+	shadow_vs = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(shadow_vs, 1, depth_vs, 0);
+	glCompileShader(shadow_vs);
+	// shadow fragment shader
+	shadow_fs = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(shadow_fs, 1, depth_fs, 0);
+	glCompileShader(shadow_fs);
+	// create depth program
+	depthProg = glCreateProgram();
+	glAttachShader(depthProg, shadow_vs);
+	glAttachShader(depthProg, shadow_fs);
+	glLinkProgram(depthProg);
+	// get location of light mvp
+	light_mvp = glGetUniformLocation(depthProg, "mvp");
+	// ----- End Initialize Depth Shader Program -----
+
+	// ----- Begin Initialize Blinn-Phong Shader Program -----
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
 	char** vertexShaderSource = loadShaderSource("vertex.vs.glsl");
 	char** fragmentShaderSource = loadShaderSource("fragment.fs.glsl");
-	string objMainPath = "./Arabic+City.obj";
-	string objFilePath = "./humvee.obj";
-
+	
 	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
 	glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
 
@@ -157,18 +217,19 @@ void My_Init()
 	glCompileShader(vertexShader);
 	glCompileShader(fragmentShader);
 
-	/*shaderLog(vertexShader);
-	shaderLog(fragmentShader);*/
-
+	program = glCreateProgram();
 	glAttachShader(program, vertexShader);
 	glAttachShader(program, fragmentShader);
-
 	glLinkProgram(program);
-	um4p = glGetUniformLocation(program, "um4p");
-	um4mv = glGetUniformLocation(program, "um4mv");
 
 	glUseProgram(program);
+	um4p = glGetUniformLocation(program, "um4p");
+	um4mv = glGetUniformLocation(program, "um4mv");
+	shadow_matrix = glGetUniformLocation(program, "shadow_matrix");
+	shadow_tex = glGetUniformLocation(program, "shadow_tex");
+	// ----- End Initialize Blinn-Phong Shader Program -----
 
+	// ----- Begin Initialize Main Model -----
 	LoadModel_custom(objFilePath, &objModel);
 	LoadModel_custom(objMainPath, &objMainModel);
 	//LoadModel(objFilePath);
@@ -180,32 +241,86 @@ void My_Init()
 		"bottom.jpg",
 		"back.jpg",
 		"front.jpg"}, camera.position, view, projection);
+	// ----- End Initialize Main Model -----
+
+	
+
+	// ----- Begin Initialize Shadow Framebuffer Object -----
+	glGenFramebuffers(1, &shadowBuffer.fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.fbo);
+
+	glGenTextures(1, &shadowBuffer.depthMap);
+	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depthMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depthMap, 0);
+	// ----- End Initialize Shadow Framebuffer Object -----
 }
 
 void My_Display()
 {
+	// ----- Begin Shadow Map Pass -----
+	const float shadow_range = 5.0f;
+	mat4 scale_bias_matrix =
+		translate(mat4(), vec3(0.5f, 0.5f, 0.5f)) *
+		scale(mat4(), vec3(0.5f, 0.5f, 0.5f));
+	mat4 light_proj_matrix = ortho(-shadow_range, shadow_range, -shadow_range, shadow_range, 0.0f, 5000.0f);
+	mat4 light_view_matrix = lookAt(vec3(0.0f, 1000.0f, -1000.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+	mat4 light_vp_matrix = light_proj_matrix * light_view_matrix;
+	mat4 shadow_sbpv_matrix = scale_bias_matrix * light_vp_matrix;
 	mat4 r = rotate(mat4(), radians(rotateAngle), vec3(1.0, 0.0, 0.0));
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+	// model matrix
 	model = mat4();
+
+	glUseProgram(depthProg);
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.fbo);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glViewport(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(4.0f, 4.0f);
+	glUniformMatrix4fv(light_mvp, 1, GL_FALSE, value_ptr(light_vp_matrix * model));
+	objMainModel.ShadowDraw();
+
+	glDisable(GL_POLYGON_OFFSET_FILL);
+	// ----- End Shadow Map Pass -----
+
+
+	// ----- Begin Blinn-Phong Shading Pass -----
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+	glUseProgram(program);
 
 	projection = glm::perspective(camera.mouse_zoom,
 		(GLfloat)(WINDOW_WIDTH) / WINDOW_HEIGHT, 1.0f, 10000.0f);
-	view = camera.getViewMatrix(); 
+	view = camera.getViewMatrix();
 
-	glUseProgram(program);
-	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model * r));
-	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depthMap);
+	glUniform1i(shadow_tex, 0);
 
-	skybox->draw();
-	objModel.Draw(program);
-
-	glUseProgram(program);
+	mat4 mat4_shadow_matrix = shadow_sbpv_matrix * model;
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
-	objMainModel.Draw(program);
+	glUniformMatrix4fv(shadow_matrix, 1, GL_FALSE, value_ptr(mat4_shadow_matrix));
 
+	objMainModel.Draw(program);
+	// ----- End Blinn-Phong Shading Pass -----
+	
+
+	//glUseProgram(program);
+	//glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model * r));
+	//glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+	//objModel.Draw(program);
+	//objMainModel.Draw(program);
+
+	skybox->draw();
     glutSwapBuffers();
 }
 

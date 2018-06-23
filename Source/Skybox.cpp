@@ -90,7 +90,7 @@ Skybox::Skybox(const std::vector<std::string>& skyboxPaths, glm::vec3& eyePos, g
 Skybox::~Skybox()
 {
 }
-#include <iostream>
+
 void Skybox::draw()
 {
 	glBindVertexArray(vao);
