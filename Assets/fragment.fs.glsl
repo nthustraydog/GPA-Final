@@ -12,19 +12,22 @@ in VertexData
 	vec3 V;
     vec3 H; // eye space halfway vector
     vec2 texcoord;
+
+	vec3 FragPos;
+    vec3 TangentFragPos;
 } vertexData;
 
 uniform sampler2D tex;
+uniform sampler2D texture_diffuse0;
+uniform sampler2D texture_normal0;
 
-uniform vec3 diffuse_albedo = vec3(0.5, 0.2, 0.7); 
-uniform vec3 specular_albedo = vec3(0.7);          
-uniform float specular_power = 200.0;     
 
 uniform vec3 Ia = vec3(0.15, 0.15, 0.15);
 uniform vec3 Id = vec3(1.0, 1.0, 1.0);
 uniform vec3 Is = vec3(1.0, 1.0, 1.0);
 uniform vec3 Ks = vec3(0.2, 0.2, 0.2);
 uniform int shinness = 8;
+
 
 uniform int fogEffect_switch;
 in vec4 viewSpace_coord;
@@ -36,16 +39,14 @@ float fog_end = 500;
 
 void main()
 {
-    /*vec3 texColor = texture(tex,vertexData.texcoord).rgb;
-    fragColor = vec4(texColor, 1.0);*/
-	//Debug Only for U,V
-    //fragColor = vec4(vertexData.texcoord, 0.0, 1.0);
+	vec3 N = texture(texture_normal0, vertexData.texcoord).rgb;
 
+	N = normalize(N * 2.0 - 1.0);
 
-	vec3 N = normalize(vertexData.N); 
-	vec3 L = normalize(vertexData.L); 
-	vec3 V = normalize(vertexData.V); 
-	vec3 H = normalize(L + V);   
+	vec3 L = normalize(vertexData.L - vertexData.TangentFragPos);
+	vec3 V = normalize(vertexData.V - vertexData.TangentFragPos);
+	vec3 reflectDir = reflect(-L, N);
+	vec3 H = normalize(L + V);  
 	
 	vec3 texColor = texture(tex, vertexData.texcoord).rgb;
 	vec3 ambient = texColor * Ia;

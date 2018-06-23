@@ -11,11 +11,24 @@
 
 class Model {
 public:
+	void ShadowDraw() const
+	{
+		for (std::vector<Mesh>::const_iterator it = this->meshes.begin(); this->meshes.end() != it; ++it)
+		{
+			it->ShadowDraw();
+		}
+	}
 	void Draw(GLuint program) const
 	{
 		for (std::vector<Mesh>::const_iterator it = this->meshes.begin(); this->meshes.end() != it; ++it)
 		{
 			it->Draw(program);
+		}
+	}
+	void Move(float offsetX, float offsetY, float offsetZ) {
+		for (std::vector<Mesh>::iterator it = this->meshes.begin(); this->meshes.end() != it; ++it)
+		{
+			it->Move(offsetX, offsetY, offsetZ);
 		}
 	}
 	bool loadModel(const std::string& filePath)

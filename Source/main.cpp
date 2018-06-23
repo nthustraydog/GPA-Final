@@ -7,13 +7,13 @@
 #include "../VC14/Texture.h"
 #include "../VC14/OrbitCamera.h"
 #include "../VC14/Skybox.h"
-
 #include <vector>
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
 #define MENU_FOGEFFECT 4
 #define MENU_EXIT 3
+#define SHADOW_MAP_SIZE 4096
 
 GLubyte timer_cnt = 0;
 bool timer_enabled = true;
@@ -29,6 +29,7 @@ mat4 model;
 
 GLint um4p;
 GLint um4mv;
+GLint um4m;
 GLint color;
 
 Model objModel;
@@ -38,10 +39,11 @@ const int WINDOW_WIDTH = 1066, WINDOW_HEIGHT = 600;
 GLfloat lastX = WINDOW_WIDTH / 2.0f, lastY = WINDOW_HEIGHT / 2.0f;
 GLfloat pressed_X = WINDOW_WIDTH / 2.0f, pressed_Y = WINDOW_HEIGHT / 2.0f; // record press coordinate
 GLfloat deltaTime = 16.0f;
+GLfloat rotateAngle = -90.0f;
 bool MouseLeftPressed = false;
 bool firstMouseMove = true;
-OrbitCamera camera;
 
+OrbitCamera camera;
 Skybox* skybox;
 
 int fogEffect = 1;
@@ -66,6 +68,7 @@ void freeShaderSource(char** srcp)
     delete[] srcp[0];
     delete[] srcp;
 }
+
 
 // define a simple data structure for storing texture image raw data
 /*typedef struct _TextureData
@@ -120,7 +123,6 @@ void freeShaderSource(char** srcp)
 
     return texture;
 }*/
-
 void LoadModel(const string &objFilePath) 
 {
 	if (!objModel.loadModel(objFilePath)) {
@@ -131,19 +133,21 @@ void LoadModel(const string &objFilePath)
 
 void My_Init()
 {
-    glClearColor(0.0f, 0.6f, 0.0f, 1.0f);
+	string objMainPath = "./Arabic+City.obj";
+	string objFilePath = "./humvee.obj";
+
+  glClearColor(0.0f, 0.6f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glDepthFunc(GL_LEQUAL);
 
-	program = glCreateProgram();
+	// ----- Begin Initialize Blinn-Phong Shader Program -----
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
 	char** vertexShaderSource = loadShaderSource("vertex.vs.glsl");
 	char** fragmentShaderSource = loadShaderSource("fragment.fs.glsl");
-	string objFilePath = "./Arabic+City.obj";
-
+	
 	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
 	glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
 
@@ -153,50 +157,68 @@ void My_Init()
 	glCompileShader(vertexShader);
 	glCompileShader(fragmentShader);
 
-	/*shaderLog(vertexShader);
-	shaderLog(fragmentShader);*/
-
+	program = glCreateProgram();
 	glAttachShader(program, vertexShader);
 	glAttachShader(program, fragmentShader);
-
 	glLinkProgram(program);
+
 	um4p = glGetUniformLocation(program, "um4p");
 	um4mv = glGetUniformLocation(program, "um4mv");
+  um4m = glGetUniformLocation(program, "um4m");
 	fogEffect_switch = glGetUniformLocation(program, "fogEffect_switch");
 
-	glUseProgram(program);
-
-	LoadModel(objFilePath);
+	// ----- Begin Initialize Main Model -----
+	LoadModel(objMainPath);
+	//LoadModel(objFilePath);
+	//LoadModel(objMain);
 
 	skybox = new Skybox(std::vector<std::string>{"right.jpg",
 		"left.jpg",
 		"top.jpg",
 		"bottom.jpg",
 		"back.jpg",
-		"front.jpg"}, 
-		camera.getPosition(), camera.getViewingMatrix(), camera.getPerspectiveMatrix());
+		"front.jpg"}, camera.position, view, projection);
+	// ----- End Initialize Main Model -----
+
 }
 
 void My_Display()
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// ----- Begin Shadow Map Pass -----
+	const float shadow_range = 5.0f;
+	mat4 scale_bias_matrix =
+		translate(mat4(), vec3(0.5f, 0.5f, 0.5f)) *
+		scale(mat4(), vec3(0.5f, 0.5f, 0.5f));
+	mat4 light_proj_matrix = ortho(-shadow_range, shadow_range, -shadow_range, shadow_range, 0.0f, 5000.0f);
+	mat4 light_view_matrix = lookAt(vec3(0.0f, 1000.0f, -1000.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+	mat4 light_vp_matrix = light_proj_matrix * light_view_matrix;
+	mat4 shadow_sbpv_matrix = scale_bias_matrix * light_vp_matrix;
+	mat4 r = rotate(mat4(), radians(rotateAngle), vec3(1.0, 0.0, 0.0));
 
+	// model matrix
 	model = mat4();
-
-	glUseProgram(program);
-
+  
 	camera.update(timer_speed / 1000.0f);
 	projection = camera.getPerspectiveMatrix();
 	view = camera.getViewingMatrix(); 
 
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+  glUniformMatrix4fv(um4m, 1, GL_FALSE, value_ptr(model));
+
 	glUniform1i(fogEffect_switch, fogEffect);
 
-	skybox->draw();
-
 	objModel.Draw(program);
+	// ----- End Blinn-Phong Shading Pass -----
+	
 
+	//glUseProgram(program);
+	//glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model * r));
+	//glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+	//objModel.Draw(program);
+	//objMainModel.Draw(program);
+
+	  skybox->draw();
     glutSwapBuffers();
 }
 
