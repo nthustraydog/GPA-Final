@@ -11,13 +11,6 @@
 
 class Model {
 public:
-	void ShadowDraw() const
-	{
-		for (std::vector<Mesh>::const_iterator it = this->meshes.begin(); this->meshes.end() != it; ++it)
-		{
-			it->ShadowDraw();
-		}
-	}
 	void Draw(GLuint program) const
 	{
 		for (std::vector<Mesh>::const_iterator it = this->meshes.begin(); this->meshes.end() != it; ++it)
@@ -46,7 +39,9 @@ public:
 			aiProcess_OptimizeMeshes |
 			aiProcess_ImproveCacheLocality |
 			aiProcess_SplitLargeMeshes |
-			aiProcess_Triangulate |
+			aiProcess_Triangulate | 
+			aiProcess_FlipUVs | 
+			aiProcess_CalcTangentSpace |
 			aiProcess_JoinIdenticalVertices |
 			aiProcess_SortByPType
 		);
@@ -141,6 +136,13 @@ private:
 				vertex.normal.y = meshPtr->mNormals[i].y;
 				vertex.normal.z = meshPtr->mNormals[i].z;
 			}
+
+			if (meshPtr->HasTangentsAndBitangents())
+			{
+				vertex.tangent.x = meshPtr->mTangents[i].x;
+				vertex.tangent.y = meshPtr->mTangents[i].y;
+				vertex.tangent.z = meshPtr->mTangents[i].z;
+			}
 			vertData.push_back(vertex);
 		}
 		
@@ -168,7 +170,12 @@ private:
 			
 			std::vector<Texture> specularTexture;
 			this->processMaterial(materialPtr, sceneObjPtr, aiTextureType_SPECULAR, specularTexture);
+			printf("size: %d\n", specularTexture.size());
 			textures.insert(textures.end(), specularTexture.begin(), specularTexture.end());
+
+			/*std::vector<Texture> normalTexture;
+			this->processMaterial(materialPtr, sceneObjPtr, aiTextureType_HEIGHT, normalTexture);
+			textures.insert(textures.end(), normalTexture.begin(), normalTexture.end());*/
 		}
 		meshObj.setData(vertData, textures, indices);
 		return true;

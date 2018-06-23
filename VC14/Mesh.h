@@ -15,6 +15,7 @@ typedef struct Vertex{
 	vec3 position;
 	vec2 texCoords;
 	vec3 normal;
+	vec3 tangent;
 }Vertex;
 
 typedef struct Texture {
@@ -37,6 +38,7 @@ public:
 		this->vertexData = vertData;
 		this->indices = indices;
 		this->textures = textures;
+
 		if (!vertData.empty() && !indices.empty())
 		{
 			this->SetUpMesh();
@@ -50,17 +52,6 @@ public:
 		}
 		this->UpdateMesh();
 	}
-	void ShadowDraw() const
-	{
-		if (vao == 0 || vbo == 0 || ebo == 0)
-			return;
-
-		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-
-		glBindVertexArray(0);
-		glUseProgram(0);
-	}
 	void Draw(GLuint program) const
 	{
 		if (vao == 0 || vbo == 0 || ebo == 0)
@@ -69,15 +60,15 @@ public:
 		glUseProgram(program);
 		glBindVertexArray(vao);
 
-		int diffuseCnt = 0, specularCnt = 0, textUnitCnt = 1;
+		int diffuseCnt = 0, specularCnt = 0, textUnitCnt = 0;
 
 		for (vector<Texture>::const_iterator it = textures.begin(); it != textures.end(); it++) {
 			stringstream samplerNameStr;
 			switch (it->type)
 			{
 			case aiTextureType_DIFFUSE:
+				glActiveTexture(GL_TEXTURE0);
 				glBindTexture(GL_TEXTURE_2D, it->id);
-				glActiveTexture(GL_TEXTURE0 + textUnitCnt);
 
 				samplerNameStr << "texture_diffuse" << diffuseCnt++;
 				glUniform1i(glGetUniformLocation(program,
@@ -85,10 +76,10 @@ public:
 
 				break;
 			case aiTextureType_SPECULAR:
+				glActiveTexture(GL_TEXTURE1);
 				glBindTexture(GL_TEXTURE_2D, it->id);
-				glActiveTexture(GL_TEXTURE0 + textUnitCnt);
 
-				samplerNameStr << "texture_specular" << specularCnt++;
+				samplerNameStr << "texture_normal" << specularCnt++;
 				glUniform1i(glGetUniformLocation(program,
 					samplerNameStr.str().c_str()), textUnitCnt++);
 				
@@ -132,6 +123,9 @@ private:
 
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(5 * sizeof(GL_FLOAT)));
 		glEnableVertexAttribArray(2);
+
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)(8 * sizeof(GL_FLOAT)));
+		glEnableVertexAttribArray(3);
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * indices.size(), &indices[0], GL_STATIC_DRAW);
