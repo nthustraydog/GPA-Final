@@ -12,8 +12,8 @@
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
-#define MENU_FOGEFFECT 4
 #define MENU_EXIT 3
+#define MENU_FOGEFFECT 4
 
 GLubyte timer_cnt = 0;
 bool timer_enabled = true;
@@ -29,6 +29,7 @@ mat4 model;
 
 GLint um4p;
 GLint um4mv;
+GLint um4m;
 GLint color;
 
 Model objModel;
@@ -162,6 +163,7 @@ void My_Init()
 	glLinkProgram(program);
 	um4p = glGetUniformLocation(program, "um4p");
 	um4mv = glGetUniformLocation(program, "um4mv");
+	um4m = glGetUniformLocation(program, "um4m");
 	fogEffect_switch = glGetUniformLocation(program, "fogEffect_switch");
 
 	glUseProgram(program);
@@ -175,6 +177,7 @@ void My_Init()
 		"back.jpg",
 		"front.jpg"}, 
 		camera.getPosition(), camera.getViewingMatrix(), camera.getPerspectiveMatrix());
+
 }
 
 void My_Display()
@@ -191,6 +194,7 @@ void My_Display()
 
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+	glUniformMatrix4fv(um4m, 1, GL_FALSE, value_ptr(model));
 	glUniform1i(fogEffect_switch, fogEffect);
 
 	skybox->draw();
@@ -347,6 +351,9 @@ void My_Menu(int id)
 	case MENU_TIMER_STOP:
 		timer_enabled = false;
 		break;
+	case MENU_EXIT:
+		exit(0);
+		break;
 	case MENU_FOGEFFECT:
 		if (fogEffect == 1)
 		{
@@ -358,9 +365,6 @@ void My_Menu(int id)
 			fogEffect = 1;
 			printf("Fog Effect ON\n");
 		}
-		break;
-	case MENU_EXIT:
-		exit(0);
 		break;
 	default:
 		break;
