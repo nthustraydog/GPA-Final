@@ -6,9 +6,11 @@ layout(location = 2) in vec3 iv3normal;
 
 uniform mat4 um4mv;
 uniform mat4 um4p;
+uniform mat4 shadow_matrix; 
 
 out VertexData
 {
+	vec4 shadow_coord; // shadow coordinate
     vec3 N; // eye space normal
     vec3 L; // eye space light vector
 	vec3 V;
@@ -30,4 +32,5 @@ void main()
 	vertexData.V = -P.xyz; 
 	vertexData.L = (um4mv * vec4(0, 1, -1, 0)).xyz;
 	vertexData.H = vec3(1, 1, 1);
+	vertexData.shadow_coord = shadow_matrix * vec4(iv3vertex, 1.0);
 }
