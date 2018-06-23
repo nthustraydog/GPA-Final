@@ -19,6 +19,7 @@ out VertexData
 	vec4 fragPosLightSpace;
 	vec3 FragPos;
     vec3 TangentFragPos;
+	mat3 TBN;
 } vertexData;
 
 out vec4 viewSpace_coord;
@@ -27,24 +28,20 @@ void main()
 {
 	mat3 normalMatrix = transpose(inverse(mat3(um4mv)));
 	vec4 P = um4mv * vec4(iv3vertex, 1.0);
-	vec3 T = normalize(((um4mv * vec4(iv3tangent, 1.0)).xyz));
-    vec3 N = normalize(normalMatrix * iv3normal);
-    vec3 B = normalize(cross(N, T));
+	vec3 T = normalize(normalMatrix * iv3tangent);
+	vec3 N = normalize(normalMatrix * iv3normal);
+	vec3 B = cross(N, T);
+	T = normalize(T - dot(T, N) * N);
 	mat3 TBN = transpose(mat3(T, B, N));
 
 	gl_Position = um4p * um4mv * vec4(iv3vertex, 1.0);
 	vertexData.texcoord = iv2tex_coord;
 
-	vertexData.N = mat3(um4mv) * iv3normal;
-	vertexData.V = -P.xyz; 
-	vertexData.L = (um4mv * vec4(0, 1, -1, 0)).xyz;
-	vertexData.H = vec3(1, 1, 1);
-
 	viewSpace_coord = um4mv * vec4(iv3vertex, 1.0);
 	vertexData.fragPosLightSpace = lightSpaceMatrix * vec4(iv3vertex, 1.0);
-
-	vertexData.FragPos = vec3(um4mv * vec4(iv3vertex, 1.0));   
+ 
 	vertexData.L = TBN * (um4mv * vec4(0, 1, -1, 0)).xyz;
     vertexData.V  = TBN * (-P.xyz);
-    vertexData.TangentFragPos  = TBN * vertexData.FragPos;
+    vertexData.TangentFragPos  = TBN * vec3(um4mv * vec4(iv3vertex, 0.0));
+	vertexData.TBN = TBN;
 }

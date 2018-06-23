@@ -15,6 +15,7 @@ in VertexData
 	vec4 fragPosLightSpace;
 	vec3 FragPos;
     vec3 TangentFragPos;
+	mat3 TBN;
 } vertexData;
 
 uniform sampler2D texture_diffuse0;
