@@ -21,6 +21,8 @@ out VertexData
     vec3 TangentFragPos;
 } vertexData;
 
+out vec4 viewSpace_coord;
+
 void main()
 {
 	mat3 normalMatrix = transpose(inverse(mat3(um4m)));
@@ -34,10 +36,10 @@ void main()
 	vertexData.texcoord = iv2tex_coord;
 
 	vertexData.N = mat3(um4mv) * iv3normal;
-	vertexData.H = vec3(1, 1, 1);
 
 	vertexData.FragPos = vec3(um4m * vec4(iv3vertex, 1.0));   
 	vertexData.L = TBN * (um4mv * vec4(0, 1, -1, 0)).xyz;
-    vertexData.V  = TBN * (-P.xyz);
-    vertexData.TangentFragPos  = TBN * vertexData.FragPos;
+  vertexData.V  = TBN * (-P.xyz);
+  vertexData.TangentFragPos  = TBN * vertexData.FragPos;
+	viewSpace_coord = um4mv * vec4(iv3vertex, 1.0);
 }

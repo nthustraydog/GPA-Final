@@ -5,6 +5,8 @@
     <ClCompile Include="..\Source\main.cpp" />
     <ClCompile Include="Mesh.h" />
     <ClCompile Include="..\Source\Skybox.cpp" />
+    <ClCompile Include="..\Source\Camera.cpp" />
+    <ClCompile Include="..\Source\OrbitCamera.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Assets\vertex.vs.glsl" />
@@ -15,5 +17,6 @@
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Skybox.h" />
+    <ClInclude Include="OrbitCamera.h" />
   </ItemGroup>
 </Project>

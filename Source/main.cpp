@@ -5,12 +5,13 @@
 
 #include "../VC14/Model.h"
 #include "../VC14/Texture.h"
-#include "../VC14/Camera.h"
+#include "../VC14/OrbitCamera.h"
 #include "../VC14/Skybox.h"
 #include <vector>
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
+#define MENU_FOGEFFECT 4
 #define MENU_EXIT 3
 #define SHADOW_MAP_SIZE 4096
 
@@ -26,62 +27,27 @@ mat4 view;
 mat4 projection;
 mat4 model;
 
-GLuint shadow_tex;
-GLint light_mvp;
-GLint shadow_matrix;
-GLint light_matrix;
-
 GLint um4p;
 GLint um4mv;
+GLint um4m;
 GLint color;
 
 Model objModel;
-Model objMainModel;
 GLuint program;
-GLuint depthProg;
 
-const int WINDOW_WIDTH = 600, WINDOW_HEIGHT = 600;
+const int WINDOW_WIDTH = 1066, WINDOW_HEIGHT = 600;
 GLfloat lastX = WINDOW_WIDTH / 2.0f, lastY = WINDOW_HEIGHT / 2.0f;
 GLfloat pressed_X = WINDOW_WIDTH / 2.0f, pressed_Y = WINDOW_HEIGHT / 2.0f; // record press coordinate
 GLfloat deltaTime = 16.0f;
 GLfloat rotateAngle = -90.0f;
 bool MouseLeftPressed = false;
 bool firstMouseMove = true;
-Camera camera(glm::vec3(0.0f, 1.0f, 3.0f));
+
+OrbitCamera camera;
 Skybox* skybox;
 
-struct
-{
-	GLuint fbo;
-	GLuint depthMap;
-} shadowBuffer;
-
-const char *depth_vs[] =
-{
-	"#version 410 core                         \n"
-	"                                          \n"
-	"uniform mat4 mvp;                         \n"
-	"                                          \n"
-	"layout (location = 0) in vec3 iv3vertex;   \n"
-	"                                          \n"
-	"void main(void)                           \n"
-	"{                                         \n"
-	"    gl_Position = mvp * vec4(iv3vertex, 1.0);         \n"
-	"}                                         \n"
-};
-
-const char *depth_fs[] =
-{
-	"#version 410 core                                \n"
-	"                                                 \n"
-	"out vec4 fragColor;                              \n"
-	"                                                 \n"
-	"void main()                                      \n"
-	"{                                                \n"
-	"    fragColor = vec4(vec3(gl_FragCoord.z), 1.0); \n"
-	"}                                                \n"
-};
-
+int fogEffect = 1;
+GLuint fogEffect_switch;
 
 char** loadShaderSource(const char* file)
 {
@@ -157,12 +123,6 @@ void freeShaderSource(char** srcp)
 
     return texture;
 }*/
-void LoadModel_custom(const string &objFilePath, Model *model) {
-	if (!model->loadModel(objFilePath)) {
-		printf("Fail to load model\n");
-		return;
-	}
-}
 void LoadModel(const string &objFilePath) 
 {
 	if (!objModel.loadModel(objFilePath)) {
@@ -176,30 +136,10 @@ void My_Init()
 	string objMainPath = "./Arabic+City.obj";
 	string objFilePath = "./humvee.obj";
 
-    glClearColor(0.0f, 0.6f, 0.0f, 1.0f);
+  glClearColor(0.0f, 0.6f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glDepthFunc(GL_LEQUAL);
-
-	// ----- Begin Initialize Depth Shader Program -----
-	GLuint shadow_vs;
-	GLuint shadow_fs;
-	// shadow vertex shader
-	shadow_vs = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(shadow_vs, 1, depth_vs, 0);
-	glCompileShader(shadow_vs);
-	// shadow fragment shader
-	shadow_fs = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(shadow_fs, 1, depth_fs, 0);
-	glCompileShader(shadow_fs);
-	// create depth program
-	depthProg = glCreateProgram();
-	glAttachShader(depthProg, shadow_vs);
-	glAttachShader(depthProg, shadow_fs);
-	glLinkProgram(depthProg);
-	// get location of light mvp
-	light_mvp = glGetUniformLocation(depthProg, "mvp");
-	// ----- End Initialize Depth Shader Program -----
 
 	// ----- Begin Initialize Blinn-Phong Shader Program -----
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -222,16 +162,13 @@ void My_Init()
 	glAttachShader(program, fragmentShader);
 	glLinkProgram(program);
 
-	glUseProgram(program);
 	um4p = glGetUniformLocation(program, "um4p");
 	um4mv = glGetUniformLocation(program, "um4mv");
-	shadow_matrix = glGetUniformLocation(program, "shadow_matrix");
-	shadow_tex = glGetUniformLocation(program, "shadow_tex");
-	// ----- End Initialize Blinn-Phong Shader Program -----
+  um4m = glGetUniformLocation(program, "um4m");
+	fogEffect_switch = glGetUniformLocation(program, "fogEffect_switch");
 
 	// ----- Begin Initialize Main Model -----
-	LoadModel_custom(objFilePath, &objModel);
-	LoadModel_custom(objMainPath, &objMainModel);
+	LoadModel(objMainPath);
 	//LoadModel(objFilePath);
 	//LoadModel(objMain);
 
@@ -243,22 +180,6 @@ void My_Init()
 		"front.jpg"}, camera.position, view, projection);
 	// ----- End Initialize Main Model -----
 
-	
-
-	// ----- Begin Initialize Shadow Framebuffer Object -----
-	glGenFramebuffers(1, &shadowBuffer.fbo);
-	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.fbo);
-
-	glGenTextures(1, &shadowBuffer.depthMap);
-	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depthMap);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowBuffer.depthMap, 0);
-	// ----- End Initialize Shadow Framebuffer Object -----
 }
 
 void My_Display()
@@ -276,41 +197,18 @@ void My_Display()
 
 	// model matrix
 	model = mat4();
+  
+	camera.update(timer_speed / 1000.0f);
+	projection = camera.getPerspectiveMatrix();
+	view = camera.getViewingMatrix(); 
 
-	glUseProgram(depthProg);
-	glBindFramebuffer(GL_FRAMEBUFFER, shadowBuffer.fbo);
-	glClear(GL_DEPTH_BUFFER_BIT);
-	glViewport(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
-
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(4.0f, 4.0f);
-	glUniformMatrix4fv(light_mvp, 1, GL_FALSE, value_ptr(light_vp_matrix * model));
-	objMainModel.ShadowDraw();
-
-	glDisable(GL_POLYGON_OFFSET_FILL);
-	// ----- End Shadow Map Pass -----
-
-
-	// ----- Begin Blinn-Phong Shading Pass -----
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-	glUseProgram(program);
-
-	projection = glm::perspective(camera.mouse_zoom,
-		(GLfloat)(WINDOW_WIDTH) / WINDOW_HEIGHT, 1.0f, 10000.0f);
-	view = camera.getViewMatrix();
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, shadowBuffer.depthMap);
-	glUniform1i(shadow_tex, 0);
-
-	mat4 mat4_shadow_matrix = shadow_sbpv_matrix * model;
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
-	glUniformMatrix4fv(shadow_matrix, 1, GL_FALSE, value_ptr(mat4_shadow_matrix));
+  glUniformMatrix4fv(um4m, 1, GL_FALSE, value_ptr(model));
 
-	objMainModel.Draw(program);
+	glUniform1i(fogEffect_switch, fogEffect);
+
+	objModel.Draw(program);
 	// ----- End Blinn-Phong Shading Pass -----
 	
 
@@ -320,7 +218,7 @@ void My_Display()
 	//objModel.Draw(program);
 	//objMainModel.Draw(program);
 
-	skybox->draw();
+	  skybox->draw();
     glutSwapBuffers();
 }
 
@@ -331,6 +229,8 @@ void My_Reshape(int width, int height)
 	float viewportAspect = (float)width / (float)height;
 	projection = perspective(radians(60.0f), viewportAspect, 0.1f, 1000.0f);
 	view = lookAt(vec3(perspect_rad, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+
+	camera.setAspect(viewportAspect);
 }
 
 void My_Timer(int val)
@@ -379,6 +279,8 @@ void My_Mouse(int button, int state, int x, int y)
 			printf("Left Mouse Button is released at (%d, %d)\n", x, y);
 		}
 	}*/
+
+	camera.onMouse(button, state, x, y);
 }
 
 //The Function that controls with the Mouse
@@ -394,7 +296,7 @@ void onMouseMotion(int x, int y) {
 	/*Camera_Setting();
 	MV = lookAt(Position_View, Position_View + Front_View, Up_View);*/
 
-	camera.handleMouseMove(xoffset, -yoffset);
+	camera.onMotion(x, y);
 }
 
 
@@ -418,38 +320,12 @@ void onMouseMotion(int x, int y) {
 
 void My_Keyboard(unsigned char key, int x, int y)
 {
-	if (key == 'w') {
-		camera.handleKeyPress(FORWARD, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 's') {
-		camera.handleKeyPress(BACKWARD, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'a') {
-		camera.handleKeyPress(LEFT, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'd') {
-		camera.handleKeyPress(RIGHT, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'z') {
-		camera.handleKeyPress(UP, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'x') {
-		camera.handleKeyPress(DOWN, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'r') {
-		camera.handleKeyPress(RESET, deltaTime);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
-	else if (key == 'v') {
-		objModel.Move(100, 0, 0);
-		printf("Button %c is pressed at (%d, %d)\n", key, x, y);
-	}
+	camera.onKeyboard(key, x, y);
+}
+
+void My_Keyboard_Up(unsigned char key, int x, int y)
+{
+	camera.onKeyboardUp(key, x, y);
 }
 
 
@@ -493,6 +369,18 @@ void My_Menu(int id)
 	case MENU_TIMER_STOP:
 		timer_enabled = false;
 		break;
+	case MENU_FOGEFFECT:
+		if (fogEffect == 1)
+		{
+			fogEffect = 0;
+			printf("Fog Effect OFF\n");
+		}
+		else if (fogEffect == 0)
+		{
+			fogEffect = 1;
+			printf("Fog Effect ON\n");
+		}
+		break;
 	case MENU_EXIT:
 		exit(0);
 		break;
@@ -516,7 +404,7 @@ int main(int argc, char *argv[])
     glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 #endif
 	glutInitWindowPosition(100, 100);
-	glutInitWindowSize(600, 600);
+	glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 	glutCreateWindow("AS2_Framework"); // You cannot use OpenGL functions before this line; The OpenGL context must be created first by glutCreateWindow()!
 #ifdef _MSC_VER
 	glewInit();
@@ -530,6 +418,7 @@ int main(int argc, char *argv[])
 
 	glutSetMenu(menu_main);
 	glutAddSubMenu("Timer", menu_timer);
+	glutAddMenuEntry("Fog Effect", MENU_FOGEFFECT);
 	glutAddMenuEntry("Exit", MENU_EXIT);
 
 	glutSetMenu(menu_timer);
@@ -551,6 +440,7 @@ int main(int argc, char *argv[])
 	glutMotionFunc(onMouseMotion);
 
 	glutKeyboardFunc(My_Keyboard);
+	glutKeyboardUpFunc(My_Keyboard_Up);
 	glutSpecialFunc(My_SpecialKeys);
 	glutTimerFunc(timer_speed, My_Timer, 0); 
 
