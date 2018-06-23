@@ -57,8 +57,8 @@ public:
 			switch (it->type)
 			{
 			case aiTextureType_DIFFUSE:
-				glBindTexture(GL_TEXTURE_2D, it->id);
 				glActiveTexture(GL_TEXTURE0 + textUnitCnt);
+				glBindTexture(GL_TEXTURE_2D, it->id);
 
 				samplerNameStr << "texture_diffuse" << diffuseCnt++;
 				glUniform1i(glGetUniformLocation(program,
@@ -66,8 +66,8 @@ public:
 
 				break;
 			case aiTextureType_SPECULAR:
-				glBindTexture(GL_TEXTURE_2D, it->id);
 				glActiveTexture(GL_TEXTURE0 + textUnitCnt);
+				glBindTexture(GL_TEXTURE_2D, it->id);
 
 				samplerNameStr << "texture_specular" << specularCnt++;
 				glUniform1i(glGetUniformLocation(program,

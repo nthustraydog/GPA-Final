@@ -18,5 +18,6 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Skybox.h" />
     <ClInclude Include="OrbitCamera.h" />
+    <ClInclude Include="common.h" />
   </ItemGroup>
 </Project>

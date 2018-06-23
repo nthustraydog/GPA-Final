@@ -7,6 +7,7 @@
 #include "../VC14/Texture.h"
 #include "../VC14/OrbitCamera.h"
 #include "../VC14/Skybox.h"
+#include "../VC14/common.h"
 
 #include <vector>
 
@@ -42,6 +43,13 @@ bool firstMouseMove = true;
 OrbitCamera camera;
 
 Skybox* skybox;
+const GLuint SHADOW_WIDTH = 4096, SHADOW_HEIGHT = 4096;
+GLuint depthProgram;
+GLuint lightSpaceMatrixLocation;
+GLuint modelLocation;
+GLuint depthMapFBO;
+GLuint depthMap;
+GLuint depthMapLocation;
 
 char** loadShaderSource(const char* file)
 {
@@ -125,6 +133,46 @@ void LoadModel(const string &objFilePath)
 	}
 }
 
+void shadowMapSetup()
+{
+	// Program
+	depthProgram = glCreateProgram();
+	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	char** vertexShaderSource = loadShaderSource("depth.vs.glsl");
+	char** fragmentShaderSource = loadShaderSource("depth.fs.glsl");
+	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
+	glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
+	freeShaderSource(vertexShaderSource);
+	freeShaderSource(fragmentShaderSource);
+	glCompileShader(vertexShader);
+	glCompileShader(fragmentShader);
+	shaderLog(vertexShader);
+	shaderLog(fragmentShader);
+	glAttachShader(depthProgram, vertexShader);
+	glAttachShader(depthProgram, fragmentShader);
+	glLinkProgram(depthProgram);
+	lightSpaceMatrixLocation = glGetUniformLocation(depthProgram, "lightSpaceMatrix");
+	modelLocation = glGetUniformLocation(depthProgram, "model");
+	// Gen FBO
+	glGenFramebuffers(1, &depthMapFBO);
+	// Get texture
+	glGenTextures(1, &depthMap);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+		SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// Attach to FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void My_Init()
 {
     glClearColor(0.0f, 0.6f, 0.0f, 1.0f);
@@ -149,8 +197,8 @@ void My_Init()
 	glCompileShader(vertexShader);
 	glCompileShader(fragmentShader);
 
-	/*shaderLog(vertexShader);
-	shaderLog(fragmentShader);*/
+	shaderLog(vertexShader);
+	shaderLog(fragmentShader);
 
 	glAttachShader(program, vertexShader);
 	glAttachShader(program, fragmentShader);
@@ -158,6 +206,7 @@ void My_Init()
 	glLinkProgram(program);
 	um4p = glGetUniformLocation(program, "um4p");
 	um4mv = glGetUniformLocation(program, "um4mv");
+	depthMapLocation = glGetUniformLocation(program, "depthMap");
 
 	glUseProgram(program);
 
@@ -170,10 +219,26 @@ void My_Init()
 		"back.jpg",
 		"front.jpg"}, 
 		camera.getPosition(), camera.getViewingMatrix(), camera.getPerspectiveMatrix());
+	shadowMapSetup();
 }
 
 void My_Display()
 {
+	// Shadow map
+	glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(depthProgram);
+	glm::mat4 lightViewing = glm::lookAt(glm::vec3(1000.0f, 2000.0f, -1000.0f), glm::vec3(1000.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 lightProj = glm::ortho(-3500.0f, 3500.0f, -3500.0f, 3500.0f, 800.0f, 4000.0f);
+	glm::mat4 lightSpace = lightProj * lightViewing;
+	glUniformMatrix4fv(lightSpaceMatrixLocation, 1, GL_FALSE, value_ptr(lightSpace));
+	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, value_ptr(mat4(1.0f)));
+	objModel.Draw(depthProgram);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+	// end
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	model = mat4();
@@ -186,10 +251,13 @@ void My_Display()
 
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+	glUniformMatrix4fv(glGetUniformLocation(program, "lightSpaceMatrix") , 1, GL_FALSE, value_ptr(lightSpace));
+	glActiveTexture(GL_TEXTURE9);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glUniform1i(depthMapLocation, 9);
+	objModel.Draw(program);
 
 	skybox->draw();
-
-	objModel.Draw(program);
 
     glutSwapBuffers();
 }
