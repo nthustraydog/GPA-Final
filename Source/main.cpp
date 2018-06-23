@@ -12,6 +12,7 @@
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
+#define MENU_FOGEFFECT 4
 #define MENU_EXIT 3
 
 GLubyte timer_cnt = 0;
@@ -42,6 +43,9 @@ bool firstMouseMove = true;
 OrbitCamera camera;
 
 Skybox* skybox;
+
+int fogEffect = 1;
+GLuint fogEffect_switch;
 
 char** loadShaderSource(const char* file)
 {
@@ -158,6 +162,7 @@ void My_Init()
 	glLinkProgram(program);
 	um4p = glGetUniformLocation(program, "um4p");
 	um4mv = glGetUniformLocation(program, "um4mv");
+	fogEffect_switch = glGetUniformLocation(program, "fogEffect_switch");
 
 	glUseProgram(program);
 
@@ -186,6 +191,7 @@ void My_Display()
 
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+	glUniform1i(fogEffect_switch, fogEffect);
 
 	skybox->draw();
 
@@ -341,6 +347,18 @@ void My_Menu(int id)
 	case MENU_TIMER_STOP:
 		timer_enabled = false;
 		break;
+	case MENU_FOGEFFECT:
+		if (fogEffect == 1)
+		{
+			fogEffect = 0;
+			printf("Fog Effect OFF\n");
+		}
+		else if (fogEffect == 0)
+		{
+			fogEffect = 1;
+			printf("Fog Effect ON\n");
+		}
+		break;
 	case MENU_EXIT:
 		exit(0);
 		break;
@@ -378,6 +396,7 @@ int main(int argc, char *argv[])
 
 	glutSetMenu(menu_main);
 	glutAddSubMenu("Timer", menu_timer);
+	glutAddMenuEntry("Fog Effect", MENU_FOGEFFECT);
 	glutAddMenuEntry("Exit", MENU_EXIT);
 
 	glutSetMenu(menu_timer);

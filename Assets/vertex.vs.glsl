@@ -16,6 +16,8 @@ out VertexData
     vec2 texcoord;
 } vertexData;
 
+out vec4 viewSpace_coord;
+
 void main()
 {
 	/*gl_Position = um4p * um4mv * vec4(iv3vertex, 1.0);
@@ -30,4 +32,6 @@ void main()
 	vertexData.V = -P.xyz; 
 	vertexData.L = (um4mv * vec4(0, 1, -1, 0)).xyz;
 	vertexData.H = vec3(1, 1, 1);
+
+	viewSpace_coord = um4mv * vec4(iv3vertex, 1.0);
 }
