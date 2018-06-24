@@ -18,6 +18,7 @@
 #define MENU_NORMALMAP 5
 #define MENU_SHADOWEFFECT 6
 #define MENU_EXIT 7
+#define MENU_NAVIGATION 8
 
 GLubyte timer_cnt = 0;
 bool timer_enabled = true;
@@ -56,13 +57,18 @@ GLuint depthMap;
 GLuint depthMapLocation;
 
 int lightEffect = 1;
-int fogEffect = 1;
+int fogEffect = 0;
 int normalMapEffect = 1;
 int shadowMapEffect = 1;
 GLuint lightEffect_switch;
 GLuint fogEffect_switch;
 GLuint normalMap_switch;
 GLuint shadowMap_switch;
+
+int navigationSwitch = 0;
+void My_Navigation();
+float navRadius = 1500.0f;
+float navHeight = 500.0f;
 
 char** loadShaderSource(const char* file)
 {
@@ -137,6 +143,24 @@ void freeShaderSource(char** srcp)
 
     return texture;
 }*/
+
+void My_Navigation()
+{
+	static float previosTime = 0.0f;
+	static float currentTime = 0.0f;
+	static float navigationTime = 0.0f;
+
+	currentTime = glutGet(GLUT_ELAPSED_TIME);
+	float deltaTime = (currentTime - previosTime) / 1000.0f;
+	navigationTime = navigationTime + deltaTime;
+	float navigationX = sin(navigationTime) * navRadius + -47.9799f;
+	float navigationZ = cos(navigationTime) * navRadius + -999.456f;
+	float navigationY = navHeight;
+	camera.setPosition(vec3(navigationX, navigationY, navigationZ));
+	camera.setTarget(vec3(-47.9799f, 76.9309f, -999.456f));
+	//cout << navigationTime << " " << navigationX << " " << navigationY << " " << navigationZ << endl;
+	previosTime = currentTime;
+}
 
 void LoadModel(const string &objFilePath) 
 {
@@ -266,6 +290,10 @@ void My_Display()
 	glUseProgram(program);
 
 	camera.update(timer_speed / 1000.0f);
+	if (navigationSwitch)
+	{
+		My_Navigation();
+	}
 	projection = camera.getPerspectiveMatrix();
 	view = camera.getViewingMatrix(); 
 
@@ -385,6 +413,41 @@ void onMouseMotion(int x, int y) {
 void My_Keyboard(unsigned char key, int x, int y)
 {
 	camera.onKeyboard(key, x, y);
+	switch (key)
+	{
+	case 'f':
+	case 'F':
+		if (navigationSwitch == 1)
+		{
+			navRadius = navRadius - 100.0f;
+			printf("\nThe New Radius is %f", navRadius);
+		}
+		break;
+	case 'h':
+	case 'H':
+		if (navigationSwitch == 1)
+		{
+			navRadius = navRadius + 100.0f;
+			printf("\nThe New Radius is %f", navRadius);
+		}
+		break;
+	case 'g':
+	case 'G':
+		if (navigationSwitch == 1)
+		{
+			navHeight = navHeight - 100.0f;
+			printf("\nThe New Height is %f", navHeight);
+		}
+		break;
+	case 't':
+	case 'T':
+		if (navigationSwitch == 1)
+		{
+			navHeight = navHeight + 100.0f;
+			printf("\nThe New Height is %f", navHeight);
+		}
+		break;
+	}
 }
 
 void My_Keyboard_Up(unsigned char key, int x, int y)
@@ -441,12 +504,12 @@ void My_Menu(int id)
 		if (fogEffect == 1)
 		{
 			fogEffect = 0;
-			printf("Fog Effect OFF\n");
+			printf("Fog Effect: OFF\n");
 		}
 		else if (fogEffect == 0)
 		{
 			fogEffect = 1;
-			printf("Fog Effect ON\n");
+			printf("Fog Effect: ON\n");
 		}
 		break;
 	case MENU_NORMALMAP:
@@ -456,6 +519,18 @@ void My_Menu(int id)
 	case MENU_SHADOWEFFECT:
 		shadowMapEffect = (shadowMapEffect + 1) % 2;
 		printf("Shadow Mapping Effect: %s\n", (shadowMapEffect == 1) ? "ON" : "OFF");
+		break;
+	case MENU_NAVIGATION:
+		if (navigationSwitch == 1)
+		{
+			navigationSwitch = 0;
+			printf("Auto Navigation: OFF\n");
+		}
+		else if (navigationSwitch == 0)
+		{
+			navigationSwitch = 1;
+			printf("Auto Navigation: ON\n");
+		}
 		break;
 	case MENU_EXIT:
 		exit(0);
@@ -498,6 +573,7 @@ int main(int argc, char *argv[])
 	glutAddMenuEntry("Fog Effect", MENU_FOGEFFECT);
 	glutAddMenuEntry("Normal Mapping Effect", MENU_NORMALMAP);
 	glutAddMenuEntry("Shadow Mapping Effect", MENU_SHADOWEFFECT);
+	glutAddMenuEntry("Auto Navigation", MENU_NAVIGATION);
 	glutAddMenuEntry("Exit", MENU_EXIT);
 
 	glutSetMenu(menu_timer);
