@@ -19,6 +19,7 @@
 #define MENU_SHADOWEFFECT 6
 #define MENU_EXIT 7
 #define MENU_NAVIGATION 8
+#define MENU_NAVIGATIONRUN 9
 
 GLubyte timer_cnt = 0;
 bool timer_enabled = true;
@@ -66,9 +67,11 @@ GLuint normalMap_switch;
 GLuint shadowMap_switch;
 
 int navigationSwitch = 0;
+int navigationRun = 0;
 void My_Navigation();
 float navRadius = 1500.0f;
 float navHeight = 500.0f;
+float navSpeed = 1;
 
 char** loadShaderSource(const char* file)
 {
@@ -151,8 +154,11 @@ void My_Navigation()
 	static float navigationTime = 0.0f;
 
 	currentTime = glutGet(GLUT_ELAPSED_TIME);
-	float deltaTime = (currentTime - previosTime) / 1000.0f;
-	navigationTime = navigationTime + deltaTime;
+	float deltaTime = (currentTime - previosTime) / 1000.0f * navSpeed;
+	if (navigationRun == 1)
+	{
+		navigationTime = navigationTime + deltaTime;
+	}
 	float navigationX = sin(navigationTime) * navRadius + -47.9799f;
 	float navigationZ = cos(navigationTime) * navRadius + -999.456f;
 	float navigationY = navHeight;
@@ -447,6 +453,22 @@ void My_Keyboard(unsigned char key, int x, int y)
 			printf("\nThe New Height is %f", navHeight);
 		}
 		break;
+	case 'r':
+	case 'R':
+		if (navigationSwitch == 1)
+		{
+			navSpeed = navSpeed / 2;
+			printf("\nThe New Speed is %f", navSpeed);
+		}
+		break;
+	case 'y':
+	case 'Y':
+		if (navigationSwitch == 1)
+		{
+			navSpeed = navSpeed * 2;
+			printf("\nThe New Speed is %f", navSpeed);
+		}
+		break;
 	}
 }
 
@@ -524,12 +546,26 @@ void My_Menu(int id)
 		if (navigationSwitch == 1)
 		{
 			navigationSwitch = 0;
+			navigationRun = 0;
 			printf("Auto Navigation: OFF\n");
 		}
 		else if (navigationSwitch == 0)
 		{
 			navigationSwitch = 1;
+			navigationRun = 1;
 			printf("Auto Navigation: ON\n");
+		}
+		break;
+	case MENU_NAVIGATIONRUN:
+		if (navigationRun == 0)
+		{
+			navigationRun = 1;
+			printf("Continue Navigation\n");
+		}
+		else if (navigationRun == 1)
+		{
+			navigationRun = 0;
+			printf("Pause Navigation\n");
 		}
 		break;
 	case MENU_EXIT:
@@ -566,19 +602,28 @@ int main(int argc, char *argv[])
 	// Create a menu and bind it to mouse right button.
 	int menu_main = glutCreateMenu(My_Menu);
 	int menu_timer = glutCreateMenu(My_Menu);
+	int menu_effect = glutCreateMenu(My_Menu);
+	int menu_navigation = glutCreateMenu(My_Menu);
 
 	glutSetMenu(menu_main);
 	glutAddSubMenu("Timer", menu_timer);
-	glutAddMenuEntry("Light Effect", MENU_LIGHTEFFECT);
-	glutAddMenuEntry("Fog Effect", MENU_FOGEFFECT);
-	glutAddMenuEntry("Normal Mapping Effect", MENU_NORMALMAP);
-	glutAddMenuEntry("Shadow Mapping Effect", MENU_SHADOWEFFECT);
-	glutAddMenuEntry("Auto Navigation", MENU_NAVIGATION);
+	glutAddSubMenu("Effect", menu_effect);
+	glutAddSubMenu("Navigation", menu_navigation);
 	glutAddMenuEntry("Exit", MENU_EXIT);
 
 	glutSetMenu(menu_timer);
 	glutAddMenuEntry("Start", MENU_TIMER_START);
 	glutAddMenuEntry("Stop", MENU_TIMER_STOP);
+
+	glutSetMenu(menu_effect);
+	glutAddMenuEntry("Light Effect", MENU_LIGHTEFFECT);
+	glutAddMenuEntry("Fog Effect", MENU_FOGEFFECT);
+	glutAddMenuEntry("Normal Mapping Effect", MENU_NORMALMAP);
+	glutAddMenuEntry("Shadow Mapping Effect", MENU_SHADOWEFFECT);
+
+	glutSetMenu(menu_navigation);
+	glutAddMenuEntry("On/Off", MENU_NAVIGATION);
+	glutAddMenuEntry("Start/Pause", MENU_NAVIGATIONRUN);
 
 	glutSetMenu(menu_main);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
