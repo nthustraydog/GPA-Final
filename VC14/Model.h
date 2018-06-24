@@ -108,9 +108,12 @@ private:
 			
 			if (meshPtr->HasPositions())
 			{
-				vertex.position.x = meshPtr->mVertices[i].x;
-				vertex.position.y = meshPtr->mVertices[i].y;
+				//glm::mat4 r = rotate(mat4(), radians(rotateAngle), vec3(1.0, 0.0, 0.0));
+				vertex.position.x = meshPtr->mVertices[i].x ;
+				vertex.position.y = meshPtr->mVertices[i].y ;
 				vertex.position.z = meshPtr->mVertices[i].z;
+
+				//vertex.position = vec3(r * vec4(vertex.position, 1.0));
 			}
 			
 			if (meshPtr->HasTextureCoords(0))
