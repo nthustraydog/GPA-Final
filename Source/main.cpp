@@ -13,8 +13,11 @@
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
+#define MENU_LIGHTEFFECT 3
 #define MENU_FOGEFFECT 4
-#define MENU_EXIT 3
+#define MENU_NORMALMAP 5
+#define MENU_SHADOWEFFECT 6
+#define MENU_EXIT 7
 
 GLubyte timer_cnt = 0;
 bool timer_enabled = true;
@@ -52,8 +55,14 @@ GLuint depthMapFBO;
 GLuint depthMap;
 GLuint depthMapLocation;
 
+int lightEffect = 1;
 int fogEffect = 1;
+int normalMapEffect = 1;
+int shadowMapEffect = 1;
+GLuint lightEffect_switch;
 GLuint fogEffect_switch;
+GLuint normalMap_switch;
+GLuint shadowMap_switch;
 
 char** loadShaderSource(const char* file)
 {
@@ -211,7 +220,10 @@ void My_Init()
 	um4p = glGetUniformLocation(program, "um4p");
 	um4mv = glGetUniformLocation(program, "um4mv");
 
+	lightEffect_switch = glGetUniformLocation(program, "lightEffect_switch");
 	fogEffect_switch = glGetUniformLocation(program, "fogEffect_switch");
+	normalMap_switch = glGetUniformLocation(program, "normalMap_switch");
+	shadowMap_switch = glGetUniformLocation(program, "shadowMap_switch");
 	depthMapLocation = glGetUniformLocation(program, "depthMap");
 
 	glUseProgram(program);
@@ -259,7 +271,10 @@ void My_Display()
 
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
+	glUniform1i(lightEffect_switch, lightEffect);
 	glUniform1i(fogEffect_switch, fogEffect);
+	glUniform1i(normalMap_switch, normalMapEffect);
+	glUniform1i(shadowMap_switch, shadowMapEffect);
 	glUniformMatrix4fv(glGetUniformLocation(program, "lightSpaceMatrix") , 1, GL_FALSE, value_ptr(lightSpace));
 	glActiveTexture(GL_TEXTURE9);
 	glBindTexture(GL_TEXTURE_2D, depthMap);
@@ -418,6 +433,10 @@ void My_Menu(int id)
 	case MENU_TIMER_STOP:
 		timer_enabled = false;
 		break;
+	case MENU_LIGHTEFFECT:
+		lightEffect = (lightEffect + 1) % 2;
+		printf("Light Effect: %s\n", (lightEffect == 1) ? "ON" : "OFF");
+		break;
 	case MENU_FOGEFFECT:
 		if (fogEffect == 1)
 		{
@@ -429,6 +448,14 @@ void My_Menu(int id)
 			fogEffect = 1;
 			printf("Fog Effect ON\n");
 		}
+		break;
+	case MENU_NORMALMAP:
+		normalMapEffect = (normalMapEffect + 1) % 2;
+		printf("Normal Mapping Effect: %s\n", (normalMapEffect == 1)? "ON" : "OFF");
+		break;
+	case MENU_SHADOWEFFECT:
+		shadowMapEffect = (shadowMapEffect + 1) % 2;
+		printf("Shadow Mapping Effect: %s\n", (shadowMapEffect == 1) ? "ON" : "OFF");
 		break;
 	case MENU_EXIT:
 		exit(0);
@@ -467,7 +494,10 @@ int main(int argc, char *argv[])
 
 	glutSetMenu(menu_main);
 	glutAddSubMenu("Timer", menu_timer);
+	glutAddMenuEntry("Light Effect", MENU_LIGHTEFFECT);
 	glutAddMenuEntry("Fog Effect", MENU_FOGEFFECT);
+	glutAddMenuEntry("Normal Mapping Effect", MENU_NORMALMAP);
+	glutAddMenuEntry("Shadow Mapping Effect", MENU_SHADOWEFFECT);
 	glutAddMenuEntry("Exit", MENU_EXIT);
 
 	glutSetMenu(menu_timer);
