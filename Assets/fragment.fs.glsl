@@ -2,10 +2,12 @@
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec3 fragNormal;
-layout(location = 2) out vec3 ambientColor;
+layout(location = 2) out vec3 viewSpacePos;
 
 uniform mat4 um4mv;
 uniform mat4 um4p;
+
+in vec4 viewSpace_coord;
 
 in VertexData
 {
@@ -35,14 +37,6 @@ uniform vec3 Is = vec3(1.0, 1.0, 1.0);
 uniform vec3 Ks = vec3(0.2, 0.2, 0.2);
 uniform int shinness = 8;
 
-// fog effect
-uniform int fogEffect_switch;
-in vec4 viewSpace_coord;
-const vec4 fogColor = vec4(0.933, 0.910, 0.667, 1.0);
-float fogFactor = 0;
-float fog_start = 1;
-float fog_end = 500;
-
 // shadow mapping
 uniform sampler2D depthMap;
 uniform int shadowMap_switch;
@@ -71,33 +65,24 @@ void main()
 
 	if(shadowMap_switch == 1) {
 		float shadow = ShadowCalculation(vertexData.fragPosLightSpace);
-		lightingColor = vec4(ambient + (1.0 - shadow) * (diffuse + specular), 1.0);
+		if(lightEffect_switch == 1) {
+			lightingColor = vec4(ambient + (1.0 - shadow) * (diffuse + specular), 1.0);
+		}
+		else {
+			lightingColor = (1.0 - shadow) * vec4(texColor, 1.0);
+		}
 	}
 	else {
 		if(lightEffect_switch == 1) {
-			lightingColor = vec4(texColor, 1.0);
-		}
-		else {
 			lightingColor = vec4(ambient + diffuse + specular, 1.0);
 		}
+		else {
+			lightingColor = vec4(texColor, 1.0);
+		}
 	}
-	
-
-	if(fogEffect_switch == 1)
-	{
-		//Turn Fog Effect On (Recommended)
-		float dist = length(viewSpace_coord);
-		fogFactor = (dist-fog_start)/(fog_end-fog_start);
-		fogFactor = clamp( fogFactor, 0.0, 1.0 );
-		fragColor = mix(lightingColor, fogColor, fogFactor);
-	}
-	else if(fogEffect_switch == 0)
-	{
-		//Turn Fog Effect Off (Use At Your OWN RISK)
-		fragColor = lightingColor;
-	}
+	fragColor = lightingColor;
 	fragNormal = normalize(vertexData.viewN);
-	ambientColor = ambient;
+	viewSpacePos = viewSpace_coord.xyz;
 }
 
 float ShadowCalculation(vec4 fragPosLightSpace)

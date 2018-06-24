@@ -70,7 +70,7 @@ GLuint mainFBO;
 GLuint mainColorTexture;
 GLuint mainDepthTexture;
 GLuint mainNormalTexture;
-GLuint mainAmbientTexture;
+GLuint viewSpacePosTex;
 GLuint ssaoProgram;
 GLuint noise_map; 
 GLuint kernal_ubo;
@@ -225,8 +225,8 @@ void shadowMapSetup()
 	glBindTexture(GL_TEXTURE_2D, depthMap);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
 		SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	// Attach to FBO
@@ -279,17 +279,17 @@ void ssaoSetup()
 		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glGenTextures(1, &mainAmbientTexture);
-	glBindTexture(GL_TEXTURE_2D, mainAmbientTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
-		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glGenTextures(1, &viewSpacePosTex);
+	glBindTexture(GL_TEXTURE_2D, viewSpacePosTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F,
+		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	// Attach to FBO
 	glBindFramebuffer(GL_FRAMEBUFFER, mainFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mainColorTexture, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, mainNormalTexture, 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, mainAmbientTexture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, viewSpacePosTex, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mainDepthTexture, 0);
 	GLuint attachments[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 , GL_COLOR_ATTACHMENT2 };
 	glDrawBuffers(3, attachments);
@@ -329,6 +329,9 @@ void ssaoSetup()
 		);
 	}
 	glBufferData(GL_UNIFORM_BUFFER, numKernels * sizeof(vec4), &kernals[0][0], GL_STATIC_DRAW);
+
+
+	fogEffect_switch = glGetUniformLocation(ssaoProgram, "fogEffect_switch");
 }
 
 void My_Init()
@@ -367,7 +370,6 @@ void My_Init()
 	um4mv = glGetUniformLocation(program, "um4mv");
 
 	lightEffect_switch = glGetUniformLocation(program, "lightEffect_switch");
-	fogEffect_switch = glGetUniformLocation(program, "fogEffect_switch");
 	normalMap_switch = glGetUniformLocation(program, "normalMap_switch");
 	shadowMap_switch = glGetUniformLocation(program, "shadowMap_switch");
 	depthMapLocation = glGetUniformLocation(program, "depthMap");
@@ -438,7 +440,6 @@ void My_Display()
 	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model));
 	glUniformMatrix4fv(um4p, 1, GL_FALSE, value_ptr(projection));
 	glUniform1i(lightEffect_switch, lightEffect);
-	glUniform1i(fogEffect_switch, fogEffect);
 	glUniform1i(normalMap_switch, normalMapEffect);
 	glUniform1i(shadowMap_switch, shadowMapEffect);
 	glUniformMatrix4fv(glGetUniformLocation(program, "lightSpaceMatrix") , 1, GL_FALSE, value_ptr(lightSpace));
@@ -468,16 +469,17 @@ void My_Display()
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, noise_map);
 	glActiveTexture(GL_TEXTURE4);
-	glBindTexture(GL_TEXTURE_2D, mainAmbientTexture);
+	glBindTexture(GL_TEXTURE_2D, viewSpacePosTex);
 	glUniformMatrix4fv(glGetUniformLocation(ssaoProgram, "proj"), 1, GL_FALSE, &projection[0][0]);
 	glUniform2f(glGetUniformLocation(ssaoProgram, "noise_scale"), WINDOW_WIDTH / 4.0f, WINDOW_HEIGHT / 4.0f);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "color_map"), 0);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "normal_map"), 1);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "depth_map"), 2);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "noise_map"), 3);
-	glUniform1i(glGetUniformLocation(ssaoProgram, "ambient_map"), 4);
+	glUniform1i(glGetUniformLocation(ssaoProgram, "viewSpacePosTex"), 4);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, kernal_ubo);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "enabled"), ssaoEffect);
+	glUniform1i(fogEffect_switch, fogEffect);
 	//glBindVertexArray(ssao_vao);
 	glDisable(GL_DEPTH_TEST);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -643,15 +645,23 @@ void My_Keyboard(unsigned char key, int x, int y)
 	case 'n':
 	case 'N':
 		normalMapEffect = !normalMapEffect;
+		break;
 	case 'l':
 	case 'L':
 		lightEffect = !lightEffect;
+		break;
 	case 'm':
 	case 'M':
 		shadowMapEffect = !shadowMapEffect;
 		break;
 	case '1':
 		fogEffect = !fogEffect;
+		break;
+	case '0':
+		lightEffect = !lightEffect;
+		shadowMapEffect = !shadowMapEffect;
+		normalMapEffect = !normalMapEffect;
+		ssaoEffect = !ssaoEffect;
 		break;
 	}
 }
