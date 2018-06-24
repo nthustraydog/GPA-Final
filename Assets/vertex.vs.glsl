@@ -19,7 +19,7 @@ out VertexData
 	vec4 fragPosLightSpace;
 	vec3 FragPos;
     vec3 TangentFragPos;
-	mat3 TBN;
+	vec3 viewN;
 } vertexData;
 
 out vec4 viewSpace_coord;
@@ -44,5 +44,6 @@ void main()
 	vertexData.L = TBN * (um4mv * vec4(0, 1, -1, 0)).xyz;
     vertexData.V  = TBN * (-P.xyz);
     vertexData.TangentFragPos  = TBN * vec3(um4mv * vec4(iv3vertex, 0.0));
-	vertexData.TBN = TBN;
+	
+	vertexData.viewN = N;
 }

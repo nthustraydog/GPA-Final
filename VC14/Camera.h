@@ -17,6 +17,8 @@ public:
 	void setAspect(float newAspect);
 	void setNear(float newNear);
 	void setFar(float newFar);
+	float getNear() { return zNear; }
+	float getFar() { return zFar; }
 
 	const glm::mat4& getViewingMatrix() const;
 	const glm::mat4& getPerspectiveMatrix() const;

@@ -52,6 +52,12 @@ GLuint depthMapFBO;
 GLuint depthMap;
 GLuint depthMapLocation;
 
+GLuint mainFBO;
+GLuint mainColorTexture;
+GLuint mainDepthTexture;
+GLuint mainNormalTexture;
+GLuint ssaoProgram;
+
 int fogEffect = 1;
 GLuint fogEffect_switch;
 
@@ -160,7 +166,7 @@ void shadowMapSetup()
 	modelLocation = glGetUniformLocation(depthProgram, "model");
 	// Gen FBO
 	glGenFramebuffers(1, &depthMapFBO);
-	// Get texture
+	// Gen texture
 	glGenTextures(1, &depthMap);
 	glBindTexture(GL_TEXTURE_2D, depthMap);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
@@ -174,6 +180,58 @@ void shadowMapSetup()
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void ssaoSetup()
+{
+	ssaoProgram = glCreateProgram();
+	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	char** vertexShaderSource = loadShaderSource("ssao.vs.glsl");
+	char** fragmentShaderSource = loadShaderSource("ssao.fs.glsl");
+	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
+	glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
+	freeShaderSource(vertexShaderSource);
+	freeShaderSource(fragmentShaderSource);
+	glCompileShader(vertexShader);
+	glCompileShader(fragmentShader);
+	shaderLog(vertexShader);
+	shaderLog(fragmentShader);
+	glAttachShader(ssaoProgram, vertexShader);
+	glAttachShader(ssaoProgram, fragmentShader);
+	glLinkProgram(ssaoProgram);
+
+	// Gen FBO
+	glGenFramebuffers(1, &mainFBO);
+	// Gen texture
+	glGenTextures(1, &mainColorTexture);
+	glBindTexture(GL_TEXTURE_2D, mainColorTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glGenTextures(1, &mainDepthTexture);
+	glBindTexture(GL_TEXTURE_2D, mainDepthTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glGenTextures(1, &mainNormalTexture);
+	glBindTexture(GL_TEXTURE_2D, mainNormalTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	// Attach to FBO
+	glBindFramebuffer(GL_FRAMEBUFFER, mainFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mainColorTexture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, mainNormalTexture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mainDepthTexture, 0);
+	GLuint attachments[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -226,6 +284,7 @@ void My_Init()
 		"front.jpg"}, 
 		camera.getPosition(), camera.getViewingMatrix(), camera.getPerspectiveMatrix());
 	shadowMapSetup();
+	ssaoSetup();
 }
 
 void My_Display()
@@ -245,8 +304,9 @@ void My_Display()
 	glCullFace(GL_BACK);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-	// end
 
+	// Render scene
+	glBindFramebuffer(GL_FRAMEBUFFER, mainFBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	model = mat4();
@@ -265,8 +325,29 @@ void My_Display()
 	glBindTexture(GL_TEXTURE_2D, depthMap);
 	glUniform1i(depthMapLocation, 9);
 	objModel.Draw(program);
-
 	skybox->draw();
+
+	// SSAO
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(ssaoProgram);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, mainColorTexture);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, mainNormalTexture);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, mainDepthTexture);
+	//glUniform1f(glGetUniformLocation(ssaoProgram, "zNear"), camera.getNear());
+	//glUniform1f(glGetUniformLocation(ssaoProgram, "zFar"), camera.getFar());
+	glUniformMatrix4fv(glGetUniformLocation(ssaoProgram, "proj"), 1, GL_FALSE, &projection[0][0]);
+	glUniform2f(glGetUniformLocation(ssaoProgram, "noise_scale"), WINDOW_WIDTH / 4.0f, WINDOW_HEIGHT / 4.0f);
+	glUniform1i(glGetUniformLocation(ssaoProgram, "color_map"), 0);
+	glUniform1i(glGetUniformLocation(ssaoProgram, "normal_map"), 1);
+	glUniform1i(glGetUniformLocation(ssaoProgram, "depth_map"), 2);
+	//glBindVertexArray(ssao_vao);
+	//glDisable(GL_DEPTH_TEST);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	//glEnable(GL_DEPTH_TEST);
 
     glutSwapBuffers();
 }

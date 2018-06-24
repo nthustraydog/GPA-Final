@@ -1,6 +1,7 @@
 #version 410
 
 layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec3 fragNormal;
 
 uniform mat4 um4mv;
 uniform mat4 um4p;
@@ -15,7 +16,7 @@ in VertexData
 	vec4 fragPosLightSpace;
 	vec3 FragPos;
     vec3 TangentFragPos;
-	mat3 TBN;
+	vec3 viewN;
 } vertexData;
 
 uniform sampler2D texture_diffuse0;
@@ -68,6 +69,7 @@ void main()
 		//Turn Fog Effect Off (Use At Your OWN RISK)
 		fragColor = lightingColor;
 	}
+	fragNormal = vertexData.viewN;
 }
 
 float ShadowCalculation(vec4 fragPosLightSpace)
