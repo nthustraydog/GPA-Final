@@ -38,6 +38,7 @@ GLint um4mv;
 GLint color;
 
 Model objModel;
+Model objCar;
 GLuint program;
 
 const int WINDOW_WIDTH = 1066, WINDOW_HEIGHT = 600;
@@ -168,6 +169,14 @@ void My_Navigation()
 	previosTime = currentTime;
 }
 
+void LoadModel_Custom(const string &objFilePath, Model *model)
+{
+	if (!model->loadModel(objFilePath)) {
+		printf("Fail to load model: %s\n", objFilePath.c_str());
+		return;
+	}
+}
+
 void LoadModel(const string &objFilePath) 
 {
 	if (!objModel.loadModel(objFilePath)) {
@@ -230,6 +239,7 @@ void My_Init()
 	char** vertexShaderSource = loadShaderSource("vertex.vs.glsl");
 	char** fragmentShaderSource = loadShaderSource("fragment.fs.glsl");
 	string objFilePath = "./Arabic+City.obj";
+	string objCarPath = "./humvee.obj";
 
 	glShaderSource(vertexShader, 1, vertexShaderSource, NULL);
 	glShaderSource(fragmentShader, 1, fragmentShaderSource, NULL);
@@ -258,7 +268,8 @@ void My_Init()
 
 	glUseProgram(program);
 
-	LoadModel(objFilePath);
+	LoadModel_Custom(objFilePath, &objModel);
+	LoadModel_Custom(objCarPath, &objCar);
 
 	skybox = new Skybox(std::vector<std::string>{"right.jpg",
 		"left.jpg",
@@ -277,13 +288,24 @@ void My_Display()
 	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(depthProgram);
+	GLfloat rotateAngle = -90.0f;
 	glm::mat4 lightViewing = glm::lookAt(glm::vec3(1000.0f, 2000.0f, -1000.0f), glm::vec3(1000.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	glm::mat4 lightProj = glm::ortho(-3500.0f, 3500.0f, -3500.0f, 3500.0f, 800.0f, 4000.0f);
 	glm::mat4 lightSpace = lightProj * lightViewing;
+
+	// for car position
+	glm::mat4 r = rotate(mat4(), radians(rotateAngle), vec3(1.0, 0.0, 0.0));
+	glm::mat4 t = translate(mat4(), vec3(3000.0f, 0.0f, 0.0f));
+
 	glUniformMatrix4fv(lightSpaceMatrixLocation, 1, GL_FALSE, value_ptr(lightSpace));
 	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, value_ptr(mat4(1.0f)));
 	glCullFace(GL_FRONT);
 	objModel.Draw(depthProgram);
+
+	glUseProgram(depthProgram);
+	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, value_ptr(mat4(1.0f) * r * t));
+	objCar.Draw(depthProgram);
+
 	glCullFace(GL_BACK);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -314,6 +336,10 @@ void My_Display()
 	glBindTexture(GL_TEXTURE_2D, depthMap);
 	glUniform1i(depthMapLocation, 9);
 	objModel.Draw(program);
+
+	glUseProgram(program);
+	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model * r * t));
+	objCar.Draw(program);
 
 	skybox->draw();
 
