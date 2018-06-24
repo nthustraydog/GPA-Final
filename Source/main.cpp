@@ -240,7 +240,9 @@ void My_Display()
 	glm::mat4 lightSpace = lightProj * lightViewing;
 	glUniformMatrix4fv(lightSpaceMatrixLocation, 1, GL_FALSE, value_ptr(lightSpace));
 	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, value_ptr(mat4(1.0f)));
+	glCullFace(GL_FRONT);
 	objModel.Draw(depthProgram);
+	glCullFace(GL_BACK);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 	// end

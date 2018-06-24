@@ -40,6 +40,7 @@ void main()
 	viewSpace_coord = um4mv * vec4(iv3vertex, 1.0);
 	vertexData.fragPosLightSpace = lightSpaceMatrix * vec4(iv3vertex, 1.0);
  
+	vertexData.N = TBN * N;
 	vertexData.L = TBN * (um4mv * vec4(0, 1, -1, 0)).xyz;
     vertexData.V  = TBN * (-P.xyz);
     vertexData.TangentFragPos  = TBN * vec3(um4mv * vec4(iv3vertex, 0.0));
