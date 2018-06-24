@@ -162,7 +162,6 @@ private:
 			
 			std::vector<Texture> specularTexture;
 			this->processMaterial(materialPtr, sceneObjPtr, aiTextureType_SPECULAR, specularTexture);
-			printf("size: %d\n", specularTexture.size());
 			textures.insert(textures.end(), specularTexture.begin(), specularTexture.end());
 		}
 		meshObj.setData(vertData, textures, indices);
