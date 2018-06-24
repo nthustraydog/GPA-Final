@@ -8,7 +8,7 @@ Camera::Camera() :
 	up(glm::vec3(0.0f, 1.0f, 0.0f)),
 	fov(glm::pi<float>() / 3.0f), 
 	aspect(16.0f / 9.0f), 
-	zNear(0.1f), 
+	zNear(30.0f), 
 	zFar(5000.0f), 
 	isViewingDirty(true), 
 	isPerspectiveDirty(true)
