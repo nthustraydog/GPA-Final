@@ -48,22 +48,7 @@ void main()
 
 	N = (normalMap_switch == 1)? texture(texture_normal0, vertexData.texcoord).rgb : normalize(vertexData.N);
 	L = normalize(vertexData.L);
-	V = normalize(vertexData.V);
-
-	/*if(normalMap_switch == 1) {
-		vec3 normalMap = texture(texture_normal0, vertexData.texcoord).rgb;
-		N = normalize(normalMap * 2.0 - 1.0);
-		L = normalize(vertexData.TBN * vertexData.L);
-		V = normalize(vertexData.TBN * vertexData.V);
-		H = normalize(L + V);
-	}
-	else {
-		N = normalize(vertexData.N);
-		L = normalize(vertexData.L);
-		V = normalize(vertexData.V);
-		H = normalize(L + V);
-	}*/
-	   
+	V = normalize(vertexData.V);   
 	
 	vec3 texColor = texture(texture_diffuse0, vertexData.texcoord).rgb;
 	vec3 ambient = texColor * Ia;
@@ -104,19 +89,10 @@ float ShadowCalculation(vec4 fragPosLightSpace)
 {
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
-	float bias = max(0.05 * (1.0 - dot(vertexData.N, vertexData.L)), 0.002);
-	vec2 texelSize = 1.0 / textureSize(depthMap, 0);
+    float closestDepth = texture(depthMap, projCoords.xy).r; 
     float currentDepth = projCoords.z;
+	float bias = 0.0025;
+    float shadow = currentDepth -bias > closestDepth  ? 1.0 : 0.0;
 
-	float shadow = 0.0;
-	for(int x = -1; x <= 1; ++x)
-	{
-		for(int y = -1; y <= 1; ++y)
-		{
-			float closestDepth = texture(depthMap, projCoords.xy + vec2(x, y) * texelSize).r;
-			shadow += currentDepth -bias > closestDepth  ? 1.0 : 0.0;
-			}
-	}
-	shadow /= 9.0;
     return shadow;
 }
