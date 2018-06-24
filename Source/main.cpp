@@ -455,8 +455,6 @@ void My_Display()
 
 	vec3 position = camera.getPosition();
 
-	printf("camera: x = %f, y = %f, z = %f\n", position.x, position.y, position.z);
-
 	// SSAO
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -641,6 +639,19 @@ void My_Keyboard(unsigned char key, int x, int y)
 	case 'o':
 	case 'O':
 		ssaoEffect = !ssaoEffect;
+		break;
+	case 'n':
+	case 'N':
+		normalMapEffect = !normalMapEffect;
+	case 'l':
+	case 'L':
+		lightEffect = !lightEffect;
+	case 'm':
+	case 'M':
+		shadowMapEffect = !shadowMapEffect;
+		break;
+	case '1':
+		fogEffect = !fogEffect;
 		break;
 	}
 }
