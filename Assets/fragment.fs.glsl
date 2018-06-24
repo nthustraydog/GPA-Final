@@ -46,9 +46,17 @@ void main()
 {
 	vec3 N, L, V, H;
 
-	N = (normalMap_switch == 1)? texture(texture_normal0, vertexData.texcoord).rgb : normalize(vertexData.N);
+	if(normalMap_switch == 1) {
+		vec3 normalMap = texture(texture_normal0, vertexData.texcoord).rgb;
+		N = normalize(normalMap * 2.0 - 1.0);
+	}
+	else {
+		N = normalize(vertexData.N);
+	}
 	L = normalize(vertexData.L);
-	V = normalize(vertexData.V);   
+	V = normalize(vertexData.V);
+
+	   
 	
 	vec3 texColor = texture(texture_diffuse0, vertexData.texcoord).rgb;
 	vec3 ambient = texColor * Ia;
