@@ -14,11 +14,8 @@ out VertexData
     vec3 N; // eye space normal
     vec3 L; // eye space light vector
 	vec3 V;
-    vec3 H; // eye space halfway vector
     vec2 texcoord;
 	vec4 fragPosLightSpace;
-	vec3 FragPos;
-    vec3 TangentFragPos;
 	mat3 TBN;
 } vertexData;
 
@@ -40,8 +37,8 @@ void main()
 	viewSpace_coord = um4mv * vec4(iv3vertex, 1.0);
 	vertexData.fragPosLightSpace = lightSpaceMatrix * vec4(iv3vertex, 1.0);
  
-	vertexData.L = TBN * (um4mv * vec4(0, 1, -1, 0)).xyz;
-    vertexData.V  = TBN * (-P.xyz);
-    vertexData.TangentFragPos  = TBN * vec3(um4mv * vec4(iv3vertex, 0.0));
+	vertexData.N = mat3(um4mv) * iv3normal;
+	vertexData.L = (um4mv * vec4(0, 1, -1, 0)).xyz;
+    vertexData.V  = (-P.xyz);
 	vertexData.TBN = TBN;
 }
