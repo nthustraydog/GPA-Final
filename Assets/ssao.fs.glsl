@@ -4,10 +4,13 @@ uniform sampler2D color_map;
 uniform sampler2D normal_map;
 uniform sampler2D depth_map;
 uniform sampler2D noise_map;
+uniform sampler2D ambient_map;
 uniform vec2 noise_scale;
 uniform mat4 proj;
 uniform float zFar;
 uniform float zNear;
+
+const int numKernels = 32;
 
 in VS_OUT
 {
@@ -16,7 +19,7 @@ in VS_OUT
 
 layout(std140) uniform Kernals
 {
-	vec4 kernals[32];
+	vec4 kernals[numKernels];
 };
 
 out vec4 fragAO;
@@ -30,21 +33,18 @@ float LinearizeDepth(float depth)
 void main()
 {
 	float depth = texture(depth_map, fs_in.texcoord).r;
-	if(depth == 1.0) { discard; }
+	if(depth == 1.0) { fragAO = texture(color_map , fs_in.texcoord); return;}
 	mat4 invproj = inverse(proj);
 	vec4 position = invproj * vec4(vec3(fs_in.texcoord, depth) * 2.0 - 1.0, 1.0);
 	position /= position.w;
-	//
-	fragAO = vec4(vec3(position.z), 1.0);
-	//
 	vec3 N = texture(normal_map, fs_in.texcoord).xyz;
 	vec3 randvec = normalize(texture(noise_map, fs_in.texcoord * noise_scale).xyz * 2.0 - 1.0);
 	vec3 T = normalize(randvec - N * dot(randvec, N));
 	vec3 B = cross(N, T);
 	mat3 tbn = mat3(T, B, N); // tangent to eye matrix
-	const float radius = 2.0;
+	const float radius = 10.0;
 	float ao = 0.0;
-	for(int i = 0; i < 32; ++i)
+	for(int i = 0; i < numKernels; ++i)
 	{
 		vec4 sampleEye = position + vec4(tbn * kernals[i].xyz * radius, 0.0);
 		vec4 sampleP = proj * sampleEye;
@@ -57,6 +57,13 @@ void main()
 		{
 			ao += 1.0;
 		}
+		/*
+		float rangeCheck = smoothstep(0.0, 1.0, radius / abs(depth - sampleDepth));
+		ao += (sampleDepth >= sampleP.z ? 1.0 : 0.0) * rangeCheck;    
+		*/
 	}
-	fragAO = vec4(vec3(ao / 32.0), 1.0);
+	//fragAO = vec4(vec3(pow((ao / numKernels), 1)), 1.0);
+	vec3 ambient = texture(ambient_map, fs_in.texcoord).xyz;
+	vec3 color = texture(color_map	, fs_in.texcoord).xyz;
+	fragAO = vec4(color * ao / numKernels, 1.0);
 }

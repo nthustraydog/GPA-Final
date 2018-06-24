@@ -2,6 +2,7 @@
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec3 fragNormal;
+layout(location = 2) out vec3 ambientColor;
 
 uniform mat4 um4mv;
 uniform mat4 um4p;
@@ -70,6 +71,7 @@ void main()
 		fragColor = lightingColor;
 	}
 	fragNormal = vertexData.viewN;
+	ambientColor = ambient;
 }
 
 float ShadowCalculation(vec4 fragPosLightSpace)

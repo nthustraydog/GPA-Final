@@ -10,6 +10,7 @@
 #include "../VC14/common.h"
 
 #include <vector>
+#include <ctime>
 
 #define MENU_TIMER_START 1
 #define MENU_TIMER_STOP 2
@@ -56,7 +57,10 @@ GLuint mainFBO;
 GLuint mainColorTexture;
 GLuint mainDepthTexture;
 GLuint mainNormalTexture;
+GLuint mainAmbientTexture;
 GLuint ssaoProgram;
+GLuint noise_map; 
+GLuint kernal_ubo;
 
 int fogEffect = 1;
 GLuint fogEffect_switch;
@@ -213,7 +217,7 @@ void ssaoSetup()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glGenTextures(1, &mainDepthTexture);
 	glBindTexture(GL_TEXTURE_2D, mainDepthTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F,
 		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -225,14 +229,56 @@ void ssaoSetup()
 		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glGenTextures(1, &mainAmbientTexture);
+	glBindTexture(GL_TEXTURE_2D, mainAmbientTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	// Attach to FBO
 	glBindFramebuffer(GL_FRAMEBUFFER, mainFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mainColorTexture, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, mainNormalTexture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, mainAmbientTexture, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mainDepthTexture, 0);
-	GLuint attachments[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, attachments);
+	GLuint attachments[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 , GL_COLOR_ATTACHMENT2 };
+	glDrawBuffers(3, attachments);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	// Noise map
+	glGenTextures(1, &noise_map);
+	glBindTexture(GL_TEXTURE_2D, noise_map);
+	vec3 noiseData[16];
+	for (int i = 0; i < 16; ++i)
+	{
+		noiseData[i] = normalize(vec3(
+			rand() / (float)RAND_MAX, // 0.0 ~ 1.0
+			rand() / (float)RAND_MAX, // 0.0 ~ 1.0
+			0.0f
+		));
+	}
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 4, 4, 0, GL_RGB, GL_FLOAT, &noiseData[0][0]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// Kernal UBO
+	glGenBuffers(1, &kernal_ubo);
+	glBindBuffer(GL_UNIFORM_BUFFER, kernal_ubo);
+	const int numKernels = 32;
+	vec4 kernals[numKernels];
+	srand(time(NULL));
+	for (int i = 0; i < numKernels; ++i)
+	{
+		float scale = i / numKernels;
+		scale = 0.1f + 0.9f * scale * scale;
+		kernals[i] = vec4(normalize(vec3(
+			rand() / (float)RAND_MAX * 2.0f - 1.0f,
+			rand() / (float)RAND_MAX * 2.0f - 1.0f,
+			rand() / (float)RAND_MAX * 0.85f + 0.15f)) * scale,
+			0.0f
+		);
+	}
+	glBufferData(GL_UNIFORM_BUFFER, numKernels * sizeof(vec4), &kernals[0][0], GL_STATIC_DRAW);
 }
 
 void My_Init()
@@ -337,17 +383,24 @@ void My_Display()
 	glBindTexture(GL_TEXTURE_2D, mainNormalTexture);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, mainDepthTexture);
-	//glUniform1f(glGetUniformLocation(ssaoProgram, "zNear"), camera.getNear());
-	//glUniform1f(glGetUniformLocation(ssaoProgram, "zFar"), camera.getFar());
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, noise_map);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, mainAmbientTexture);
+	glUniform1f(glGetUniformLocation(ssaoProgram, "zNear"), camera.getNear());
+	glUniform1f(glGetUniformLocation(ssaoProgram, "zFar"), camera.getFar());
 	glUniformMatrix4fv(glGetUniformLocation(ssaoProgram, "proj"), 1, GL_FALSE, &projection[0][0]);
 	glUniform2f(glGetUniformLocation(ssaoProgram, "noise_scale"), WINDOW_WIDTH / 4.0f, WINDOW_HEIGHT / 4.0f);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "color_map"), 0);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "normal_map"), 1);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "depth_map"), 2);
+	glUniform1i(glGetUniformLocation(ssaoProgram, "noise_map"), 3);
+	glUniform1i(glGetUniformLocation(ssaoProgram, "ambient_map"), 4);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, kernal_ubo);
 	//glBindVertexArray(ssao_vao);
-	//glDisable(GL_DEPTH_TEST);
+	glDisable(GL_DEPTH_TEST);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	//glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
 
     glutSwapBuffers();
 }
