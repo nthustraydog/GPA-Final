@@ -402,15 +402,17 @@ void My_Display()
 
 	// for car position
 	glm::mat4 r = rotate(mat4(), radians(rotateAngle), vec3(1.0, 0.0, 0.0));
-	glm::mat4 t = translate(mat4(), vec3(3000.0f, 0.0f, 0.0f));
+	glm::mat4 t = translate(mat4(), vec3(-1600.0f, -200.0f, -10.0f));
+	glm::mat4 s = scale(mat4(), vec3(0.5f, 0.5f, 0.5f));
 
 	glUniformMatrix4fv(lightSpaceMatrixLocation, 1, GL_FALSE, value_ptr(lightSpace));
 	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, value_ptr(mat4(1.0f)));
 	glCullFace(GL_FRONT);
 	objModel.Draw(depthProgram);
 
+	// draw depth model matrix for car, need rotate, translate and scale
 	glUseProgram(depthProgram);
-	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, value_ptr(mat4(1.0f) * r * t));
+	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, value_ptr(mat4(1.0f) * r * t * s));
 	objCar.Draw(depthProgram);
 
 	glCullFace(GL_BACK);
@@ -446,10 +448,14 @@ void My_Display()
 	objModel.Draw(program);
 
 	glUseProgram(program);
-	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model * r * t));
+	glUniformMatrix4fv(um4mv, 1, GL_FALSE, value_ptr(view * model * r * t * s));
 	objCar.Draw(program);
 
 	skybox->draw();
+
+	vec3 position = camera.getPosition();
+
+	printf("camera: x = %f, y = %f, z = %f\n", position.x, position.y, position.z);
 
 	// SSAO
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -478,6 +484,7 @@ void My_Display()
 	glDisable(GL_DEPTH_TEST);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glEnable(GL_DEPTH_TEST);
+
 
     glutSwapBuffers();
 }
