@@ -63,6 +63,7 @@ int lightEffect = 1;
 int fogEffect = 0;
 int normalMapEffect = 1;
 int shadowMapEffect = 1;
+int ssaoEffect = 1;
 GLuint lightEffect_switch;
 
 GLuint mainFBO;
@@ -300,8 +301,8 @@ void ssaoSetup()
 	for (int i = 0; i < 16; ++i)
 	{
 		noiseData[i] = normalize(vec3(
-			rand() / (float)RAND_MAX, // 0.0 ~ 1.0
-			rand() / (float)RAND_MAX, // 0.0 ~ 1.0
+			rand() / (float)RAND_MAX * 2.0 - 1.0, // 0.0 ~ 1.0
+			rand() / (float)RAND_MAX * 2.0 - 1.0, // 0.0 ~ 1.0
 			0.0f
 		));
 	}
@@ -464,8 +465,6 @@ void My_Display()
 	glBindTexture(GL_TEXTURE_2D, noise_map);
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, mainAmbientTexture);
-	glUniform1f(glGetUniformLocation(ssaoProgram, "zNear"), camera.getNear());
-	glUniform1f(glGetUniformLocation(ssaoProgram, "zFar"), camera.getFar());
 	glUniformMatrix4fv(glGetUniformLocation(ssaoProgram, "proj"), 1, GL_FALSE, &projection[0][0]);
 	glUniform2f(glGetUniformLocation(ssaoProgram, "noise_scale"), WINDOW_WIDTH / 4.0f, WINDOW_HEIGHT / 4.0f);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "color_map"), 0);
@@ -474,6 +473,7 @@ void My_Display()
 	glUniform1i(glGetUniformLocation(ssaoProgram, "noise_map"), 3);
 	glUniform1i(glGetUniformLocation(ssaoProgram, "ambient_map"), 4);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, kernal_ubo);
+	glUniform1i(glGetUniformLocation(ssaoProgram, "enabled"), ssaoEffect);
 	//glBindVertexArray(ssao_vao);
 	glDisable(GL_DEPTH_TEST);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -630,6 +630,10 @@ void My_Keyboard(unsigned char key, int x, int y)
 			navSpeed = navSpeed * 2;
 			printf("\nThe New Speed is %f", navSpeed);
 		}
+		break;
+	case 'o':
+	case 'O':
+		ssaoEffect = !ssaoEffect;
 		break;
 	}
 }

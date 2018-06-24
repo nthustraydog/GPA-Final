@@ -7,8 +7,7 @@ uniform sampler2D noise_map;
 uniform sampler2D ambient_map;
 uniform vec2 noise_scale;
 uniform mat4 proj;
-uniform float zFar;
-uniform float zNear;
+uniform int enabled;
 
 const int numKernels = 32;
 
@@ -24,14 +23,13 @@ layout(std140) uniform Kernals
 
 out vec4 fragAO;
 
-float LinearizeDepth(float depth)
-{
-	float z = depth * 2.0 - 1.0; // 回到NDC
-	return (2.0 * zNear) / (zFar + zNear - z * (zFar - zNear));    
-}
-
 void main()
 {
+	if (enabled == 0)
+	{
+		fragAO = texture(color_map , fs_in.texcoord);
+		return;
+	}
 	float depth = texture(depth_map, fs_in.texcoord).r;
 	if(depth == 1.0) { fragAO = texture(color_map , fs_in.texcoord); return;}
 	mat4 invproj = inverse(proj);
@@ -42,7 +40,7 @@ void main()
 	vec3 T = normalize(randvec - N * dot(randvec, N));
 	vec3 B = cross(N, T);
 	mat3 tbn = mat3(T, B, N); // tangent to eye matrix
-	const float radius = 10.0;
+	const float radius = 30.0;
 	float ao = 0.0;
 	for(int i = 0; i < numKernels; ++i)
 	{
