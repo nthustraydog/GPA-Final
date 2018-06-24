@@ -275,7 +275,7 @@ void ssaoSetup()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glGenTextures(1, &mainNormalTexture);
 	glBindTexture(GL_TEXTURE_2D, mainNormalTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F,
 		WINDOW_WIDTH, WINDOW_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -301,8 +301,8 @@ void ssaoSetup()
 	for (int i = 0; i < 16; ++i)
 	{
 		noiseData[i] = normalize(vec3(
-			rand() / (float)RAND_MAX * 2.0 - 1.0, // 0.0 ~ 1.0
-			rand() / (float)RAND_MAX * 2.0 - 1.0, // 0.0 ~ 1.0
+			rand() / (float)RAND_MAX, // 0.0 ~ 1.0
+			rand() / (float)RAND_MAX, // 0.0 ~ 1.0
 			0.0f
 		));
 	}

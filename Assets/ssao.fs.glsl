@@ -60,8 +60,9 @@ void main()
 		ao += (sampleDepth >= sampleP.z ? 1.0 : 0.0) * rangeCheck;    
 		*/
 	}
-	//fragAO = vec4(vec3(pow((ao / numKernels), 1)), 1.0);
+
 	vec3 ambient = texture(ambient_map, fs_in.texcoord).xyz;
 	vec3 color = texture(color_map	, fs_in.texcoord).xyz;
 	fragAO = vec4(color * ao / numKernels, 1.0);
+	//fragAO = vec4(tbn * vec3(0.0, 0.0, 1.0), 1.0);
 }

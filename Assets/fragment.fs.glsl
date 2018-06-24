@@ -29,7 +29,7 @@ uniform sampler2D texture_normal0;
 uniform int normalMap_switch;
 
 // Blinn-Phong Lighting
-uniform vec3 Ia = vec3(0.2, 0.2, 0.2);
+uniform vec3 Ia = vec3(0.4, 0.4, 0.4);
 uniform vec3 Id = vec3(1.0, 1.0, 1.0);
 uniform vec3 Is = vec3(1.0, 1.0, 1.0);
 uniform vec3 Ks = vec3(0.2, 0.2, 0.2);
@@ -96,7 +96,7 @@ void main()
 		//Turn Fog Effect Off (Use At Your OWN RISK)
 		fragColor = lightingColor;
 	}
-	fragNormal = vertexData.viewN;
+	fragNormal = normalize(vertexData.viewN);
 	ambientColor = ambient;
 }
 
