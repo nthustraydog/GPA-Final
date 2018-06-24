@@ -16,7 +16,6 @@ out VertexData
 	vec3 V;
     vec2 texcoord;
 	vec4 fragPosLightSpace;
-	mat3 TBN;
 } vertexData;
 
 out vec4 viewSpace_coord;
@@ -37,8 +36,8 @@ void main()
 	viewSpace_coord = um4mv * vec4(iv3vertex, 1.0);
 	vertexData.fragPosLightSpace = lightSpaceMatrix * vec4(iv3vertex, 1.0);
  
-	vertexData.N = mat3(um4mv) * iv3normal;
-	vertexData.L = (um4mv * vec4(0, 1, -1, 0)).xyz;
-    vertexData.V  = (-P.xyz);
-	vertexData.TBN = TBN;
+	vertexData.N = TBN * mat3(um4mv) * iv3normal;
+	vertexData.L = TBN * (um4mv * vec4(0, 1, -1, 0)).xyz;
+    vertexData.V  = TBN * (-P.xyz);
+	
 }
